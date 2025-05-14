@@ -101,9 +101,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
             </tr>
           ) : data.length === 0 ? (
             <tr>
-              <td
-                className="px-6 py-4 whitespace-nowrap text-center"
-              >
+              <td colSpan={columns.length} className="px-6 py-4 whitespace-nowrap">
                 {emptyContent}
               </td>
             </tr>

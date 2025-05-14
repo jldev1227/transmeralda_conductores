@@ -105,7 +105,19 @@ export interface CrearConductorRequest {
   permisos?: Partial<PermisosConductor>;
 }
 
-export interface ActualizarConductorRequest extends Partial<CrearConductorRequest> {}
+export interface BusquedaParams {
+  page?: number;
+  limit?: number;
+  search?: string;     // Para búsqueda general (nombre, apellido, correo, etc.)
+  estado?: EstadoConductor | EstadoConductor[];
+  sede_trabajo?: SedeTrabajo | SedeTrabajo[];
+  tipo_identificacion?: string | string[];
+  tipo_contrato?: string | string[];
+  sort?: string;
+  order?: 'ASC' | 'DESC';
+}
+
+export interface ActualizarConductorRequest extends Partial<CrearConductorRequest> { }
 
 export interface ConductorAuthResult {
   conductor: Omit<Conductor, 'password'>;
@@ -232,14 +244,14 @@ interface ConductorContextType {
   loading: boolean;
   error: string | null;
   validationErrors: ValidationError[] | null;
-  
+
   // Operaciones CRUD
   fetchConductores: (page?: number) => Promise<void>;
   getConductor: (id: string) => Promise<Conductor | null>;
   crearConductor: (data: CrearConductorRequest) => Promise<Conductor | null>;
   actualizarConductor: (id: string, data: ActualizarConductorRequest) => Promise<Conductor | null>;
   eliminarConductor: (id: string) => Promise<boolean>;
-  
+
   // Funciones de utilidad
   handlePageChange: (page: number) => void;
   handleSortChange: (descriptor: SortDescriptor) => void;
@@ -260,16 +272,16 @@ const defaultConductorContext: ConductorContextType = {
   error: null,
   validationErrors: null,
 
-  fetchConductores: async () => {},
+  fetchConductores: async () => { },
   getConductor: async () => null,
   crearConductor: async () => null,
   actualizarConductor: async () => null,
   eliminarConductor: async () => false,
-  
-  handlePageChange: () => {},
-  handleSortChange: () => {},
-  clearError: () => {},
-  setCurrentConductor: () => {},
+
+  handlePageChange: () => { },
+  handleSortChange: () => { },
+  clearError: () => { },
+  setCurrentConductor: () => { },
 };
 
 // Crear el contexto
@@ -338,38 +350,83 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   // Operaciones CRUD
-  const fetchConductores = async (page: number = conductoresState.currentPage) => {
-    setLoading(true);
-    clearError();
+const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
+  setLoading(true);
+  clearError();
 
-    try {
-      const response = await apiClient.get<ApiResponse<Conductor[]>>("/api/conductores", {
-        params: {
-          page,
-          sort: sortDescriptor.column,
-          order: sortDescriptor.direction
-        }
-      });
-
-      if (response.data && response.data.success) {
-        setConductoresState({
-          data: response.data.data,
-          count: response.data.count || 0,
-          totalPages: response.data.totalPages || 1,
-          currentPage: response.data.currentPage || 1
-        });
-        return;
-      } else {
-        throw new Error("Respuesta no exitosa del servidor");
-      }
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Error al obtener conductores");
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-      setInitializing(false);
+  try {
+    // Prepara los parámetros básicos
+    const params: any = {
+      page: paramsBusqueda.page || conductoresState.currentPage,
+      limit: paramsBusqueda.limit || 10,
+      sort: paramsBusqueda.sort || sortDescriptor.column,
+      order: paramsBusqueda.order || sortDescriptor.direction
+    };
+    
+    // Añade el término de búsqueda si existe
+    if (paramsBusqueda.search) {
+      params.search = paramsBusqueda.search;
     }
-  };
+    
+    // Añade filtros de estado
+    if (paramsBusqueda.estado) {
+      if (Array.isArray(paramsBusqueda.estado)) {
+        params.estado = paramsBusqueda.estado.join(',');
+      } else {
+        params.estado = paramsBusqueda.estado;
+      }
+    }
+    
+    // Añade filtros de sede
+    if (paramsBusqueda.sede_trabajo) {
+      if (Array.isArray(paramsBusqueda.sede_trabajo)) {
+        params.sede_trabajo = paramsBusqueda.sede_trabajo.join(',');
+      } else {
+        params.sede_trabajo = paramsBusqueda.sede_trabajo;
+      }
+    }
+    
+    // Añade filtros de tipo de identificación
+    if (paramsBusqueda.tipo_identificacion) {
+      if (Array.isArray(paramsBusqueda.tipo_identificacion)) {
+        params.tipo_identificacion = paramsBusqueda.tipo_identificacion.join(',');
+      } else {
+        params.tipo_identificacion = paramsBusqueda.tipo_identificacion;
+      }
+    }
+    
+    // Añade filtros de tipo de contrato
+    if (paramsBusqueda.tipo_contrato) {
+      if (Array.isArray(paramsBusqueda.tipo_contrato)) {
+        params.tipo_contrato = paramsBusqueda.tipo_contrato.join(',');
+      } else {
+        params.tipo_contrato = paramsBusqueda.tipo_contrato;
+      }
+    }
+
+    const response = await apiClient.get<ApiResponse<Conductor[]>>("/api/conductores", {
+      params
+    });
+
+    if (response.data && response.data.success) {
+      setConductoresState({
+        data: response.data.data,
+        count: response.data.count || 0,
+        totalPages: response.data.totalPages || 1,
+        currentPage: parseInt(params.page) || 1
+      });
+      return;
+    } else {
+      throw new Error("Respuesta no exitosa del servidor");
+    }
+  } catch (err) {
+    const errorMessage = handleApiError(err, "Error al obtener conductores");
+    setError(errorMessage);
+  } finally {
+    setLoading(false);
+    setInitializing(false);
+  }
+};
 
   const getConductor = async (id: string): Promise<Conductor | null> => {
     setLoading(true);
@@ -377,7 +434,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     try {
       const response = await apiClient.get<ApiResponse<Conductor>>(`/api/conductores/${id}`);
-      
+
       if (response.data && response.data.success) {
         const conductor = response.data.data;
         setCurrentConductor(conductor);
@@ -400,7 +457,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     try {
       const response = await apiClient.post<ApiResponse<Conductor>>("/api/conductores", data);
-      
+
       console.log(response)
       if (response.data && response.data.success) {
         // Actualizar la lista de conductores después de crear uno nuevo
@@ -424,18 +481,18 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     try {
       const response = await apiClient.put<ApiResponse<Conductor>>(`/api/conductores/${id}`, data);
-      
+
       if (response.data && response.data.success) {
         const conductorActualizado = response.data.data;
-        
+
         // Actualizar el currentConductor si corresponde al mismo ID
         if (currentConductor && currentConductor.id === id) {
           setCurrentConductor(conductorActualizado);
         }
-        
+
         // Actualizar la lista de conductores
         fetchConductores(conductoresState.currentPage);
-        
+
         return conductorActualizado;
       } else {
         throw new Error("Respuesta no exitosa del servidor");
@@ -455,16 +512,16 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     try {
       const response = await apiClient.delete<ApiResponse<any>>(`/api/conductores/${id}`);
-      
+
       if (response.data && response.data.success) {
         // Si el conductor eliminado es el actual, limpiarlo
         if (currentConductor && currentConductor.id === id) {
           setCurrentConductor(null);
         }
-        
+
         // Refrescar la lista después de eliminar
         fetchConductores(conductoresState.currentPage);
-        
+
         return true;
       } else {
         throw new Error("Respuesta no exitosa del servidor");

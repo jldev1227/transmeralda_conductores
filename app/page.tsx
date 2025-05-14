@@ -1,8 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react";
-
-import { Conductor, useConductor, EstadoConductor } from "@/context/ConductorContext";
+import { Conductor, useConductor, BusquedaParams } from "@/context/ConductorContext";
 import ConductoresTable from "@/components/ui/table";
 import { SortDescriptor } from "@/components/ui/customTable";
 import { Button } from "@heroui/button";
@@ -12,9 +11,9 @@ import ModalDetalleConductor from "@/components/ui/modalDetalle";
 import BuscadorFiltrosConductores, { FilterOptions } from "@/components/ui/buscadorFiltros";
 
 export default function GestionConductores() {
-  const { conductoresState, handlePageChange, handleSortChange, crearConductor, actualizarConductor, fetchConductores } = useConductor();
+  const { conductoresState, fetchConductores, crearConductor, actualizarConductor } = useConductor();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [sortDescriptor, _] = useState<SortDescriptor>({
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "nombre",
     direction: "ascending",
   });
@@ -27,7 +26,6 @@ export default function GestionConductores() {
     tiposContrato: [],
     estados: []
   });
-  const [conductoresFiltrados, setConductoresFiltrados] = useState<Conductor[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
   // Estados para los modales
@@ -36,71 +34,79 @@ export default function GestionConductores() {
   const [modalFormOpen, setModalFormOpen] = useState(false);
   const [conductorParaEditar, setConductorParaEditar] = useState<Conductor | null>(null);
 
-  // Efecto para aplicar filtros y búsqueda
+  // Inicialización: cargar conductores
   useEffect(() => {
-    filtrarConductores();
-  }, [conductoresState.data, searchTerm, filtros]);
+    cargarConductores();
+  }, []);
 
-  // Función para filtrar conductores basados en búsqueda y filtros
-  const filtrarConductores = () => {
-    let resultados = [...conductoresState.data];
-
-    // Aplicar búsqueda
-    if (searchTerm) {
-      const termino = searchTerm.toLowerCase();
-      resultados = resultados.filter(conductor => 
-        conductor.nombre.toLowerCase().includes(termino) ||
-        conductor.apellido.toLowerCase().includes(termino) ||
-        conductor.email?.toLowerCase().includes(termino) ||
-        conductor.numero_identificacion?.toLowerCase().includes(termino) ||
-        conductor.telefono?.toLowerCase().includes(termino)
-      );
+  // Función para cargar conductores con parámetros de búsqueda/filtros
+  const cargarConductores = async (page: number = 1) => {
+    setLoading(true);
+    
+    try {
+      // Construir parámetros de búsqueda
+      const params: BusquedaParams = {
+        page,
+        sort: sortDescriptor.column,
+        order: sortDescriptor.direction === 'ascending' ? 'ASC' : 'DESC'
+      };
+      
+      // Añadir término de búsqueda
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+      
+      // Añadir filtros
+      if (filtros.sedes.length > 0) {
+        params.sede_trabajo = filtros.sedes as any;
+      }
+      
+      if (filtros.tiposIdentificacion.length > 0) {
+        params.tipo_identificacion = filtros.tiposIdentificacion;
+      }
+      
+      if (filtros.tiposContrato.length > 0) {
+        params.tipo_contrato = filtros.tiposContrato;
+      }
+      
+      if (filtros.estados.length > 0) {
+        params.estado = filtros.estados as any;
+      }
+      
+      // Realizar la búsqueda
+      await fetchConductores(params);
+    } catch (error) {
+      console.error("Error al cargar conductores:", error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Aplicar filtros de sede
-    if (filtros.sedes.length > 0) {
-      resultados = resultados.filter(conductor => 
-        conductor.sede_trabajo && filtros.sedes.includes(conductor.sede_trabajo)
-      );
-    }
+  // Manejar cambio de página
+  const handlePageChange = (page: number) => {
+    cargarConductores(page);
+  };
 
-    // Aplicar filtros de tipo de identificación
-    if (filtros.tiposIdentificacion.length > 0) {
-      resultados = resultados.filter(conductor => 
-        filtros.tiposIdentificacion.includes(conductor.tipo_identificacion)
-      );
-    }
-
-    // Aplicar filtros de tipo de contrato
-    if (filtros.tiposContrato.length > 0) {
-      resultados = resultados.filter(conductor => 
-        conductor.tipo_contrato && filtros.tiposContrato.includes(conductor.tipo_contrato)
-      );
-    }
-
-    // Aplicar filtros de estado
-    if (filtros.estados.length > 0) {
-      resultados = resultados.filter(conductor => 
-        filtros.estados.includes(conductor.estado)
-      );
-    }
-
-    setConductoresFiltrados(resultados);
+  // Manejar cambio de ordenamiento
+  const handleSortChange = (descriptor: SortDescriptor) => {
+    setSortDescriptor(descriptor);
+    cargarConductores(1); // Volver a la primera página con el nuevo ordenamiento
   };
 
   // Manejar la búsqueda
-  const handleSearch = (termino: string) => {
+  const handleSearch = async (termino: string) => {
     setSearchTerm(termino);
-    console.log(termino)
+    await cargarConductores(1); // Volver a la primera página con la nueva búsqueda
   };
 
   // Manejar los filtros
-  const handleFilter = (nuevosFiltros: FilterOptions) => {
+  const handleFilter = async (nuevosFiltros: FilterOptions) => {
     setFiltros(nuevosFiltros);
+    await cargarConductores(1); // Volver a la primera página con los nuevos filtros
   };
 
   // Manejar reset de búsqueda y filtros
-  const handleReset = () => {
+  const handleReset = async () => {
     setSearchTerm("");
     setFiltros({
       sedes: [],
@@ -108,8 +114,8 @@ export default function GestionConductores() {
       tiposContrato: [],
       estados: []
     });
-    // Opcional: Recargar los datos
-    fetchConductores(1);
+    
+    await cargarConductores(1); // Volver a la primera página sin filtros
   };
 
   // Manejar exportación (ejemplo)
@@ -169,6 +175,9 @@ export default function GestionConductores() {
       // Si llegamos aquí, significa que la operación fue exitosa
       // Cerrar modal después de guardar correctamente
       cerrarModalForm();
+      
+      // Recargar la lista de conductores con los filtros actuales
+      await cargarConductores(conductoresState.currentPage);
     } catch (error) {
       // Si hay un error, no hacemos nada aquí ya que los errores ya son manejados
       console.log("Error al guardar el conductor, el modal permanece abierto:", error);
@@ -206,16 +215,14 @@ export default function GestionConductores() {
       {/* Información sobre resultados filtrados */}
       {(searchTerm || Object.values(filtros).some(f => f.length > 0)) && (
         <div className="bg-blue-50 p-3 rounded-md text-blue-700 text-sm">
-          Mostrando {conductoresFiltrados.length} resultado(s) de {conductoresState.count} conductor(es) total(es)
+          Mostrando {conductoresState.data.length} resultado(s) de {conductoresState.count} conductor(es) total(es)
           {searchTerm && <span> - Búsqueda: "{searchTerm}"</span>}
         </div>
       )}
 
       {/* Tabla de conductores con paginación */}
       <ConductoresTable
-        currentItems={searchTerm || Object.values(filtros).some(f => f.length > 0) 
-          ? conductoresFiltrados 
-          : conductoresState.data}
+        currentItems={conductoresState.data}
         sortDescriptor={sortDescriptor}
         selectedIds={selectedIds}
         onSelectItem={handleSelectItem}
