@@ -39,8 +39,6 @@ const CustomTable: React.FC<CustomTableProps> = ({
   isLoading = false,
   className = "",
   onRowClick,
-  selectedItems = [],
-  getItemId = (item) => item.id,
 }) => {
 
   // Manejar cambio de ordenamiento

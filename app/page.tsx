@@ -8,6 +8,7 @@ import { SortDescriptor } from "@/components/ui/customTable";
 import { Button } from "@heroui/button";
 import { PlusIcon } from "lucide-react";
 import ModalForm from "@/components/ui/modalForm";
+import ModalDetalleConductor from "@/components/ui/modalDetalle";
 
 
 export default function GestionConductores() {
@@ -24,8 +25,6 @@ export default function GestionConductores() {
   // Estados para el modal de formulario (crear/editar)
   const [modalFormOpen, setModalFormOpen] = useState(false);
   const [conductorParaEditar, setConductorParaEditar] = useState<Conductor | null>(null);
-
-
 
   // Manejar la selección de conductores
   const handleSelectItem = (conductor: Conductor) => {
@@ -59,6 +58,11 @@ export default function GestionConductores() {
     setConductorParaEditar(null);
   };
 
+  const cerrarModalDetalle = () => {
+    setModalDetalleOpen(false);
+    setSelectedConductorId(null);
+  };
+
   // Función para guardar conductor (nueva o editada)
   const guardarConductor = async (conductorData: Conductor) => {
     try {
@@ -90,7 +94,7 @@ export default function GestionConductores() {
 
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto p-10 space-y-5">
       <div className="flex gap-3 flex-col sm:flex-row w-full items-start md:items-center justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">
           Gestión de Conductores
@@ -119,6 +123,7 @@ export default function GestionConductores() {
         onPageChange={handlePageChange}
         onSortChange={handleSortChange}
         abrirModalEditar={abrirModalEditar}
+        abrirModalDetalle={abrirModalDetalle}
       />
 
       {/* Modal de formulario (crear/editar) */}
@@ -128,6 +133,17 @@ export default function GestionConductores() {
         onSave={guardarConductor}
         conductorEditar={conductorParaEditar}
         titulo={conductorParaEditar ? "Editar Conductor" : "Registrar Nuevo Conductor"}
+      />
+
+      <ModalDetalleConductor
+        isOpen={modalDetalleOpen}
+        onClose={cerrarModalDetalle}
+        conductor={conductoresState.data.filter(conductor=> conductor.id === selectedConductorId)[0]}
+        onEdit={() => {
+          setModalDetalleOpen(false);
+          setModalFormOpen(true);
+          setConductorParaEditar(conductoresState.data.filter(conductor=> conductor.id === selectedConductorId)[0])
+        }}
       />
 
     </div>

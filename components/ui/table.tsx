@@ -39,6 +39,7 @@ interface ConductoresTableProps {
   totalPages: number;
   totalCount: number;
   abrirModalEditar: (conductor : Conductor)=>void
+  abrirModalDetalle: (id : string)=>void
   onPageChange: (page: number) => void;
 }
 
@@ -54,7 +55,8 @@ export default function ConductoresTable({
   totalPages,
   totalCount,
   onPageChange,
-  abrirModalEditar
+  abrirModalEditar,
+  abrirModalDetalle
 }: ConductoresTableProps) {
   const router = useRouter();
 
@@ -208,7 +210,7 @@ export default function ConductoresTable({
             title="Ver detalle"
             onClick={(e) => {
               e.stopPropagation();
-              router.push(`/conductores/${conductor.id}`);
+              abrirModalDetalle(conductor.id);
             }}
           >
             <Eye className="h-5 w-5" />
@@ -412,7 +414,7 @@ export default function ConductoresTable({
         }
         selectedItems={currentItems.filter(item => selectedIds.includes(item.id))}
         onSelectionChange={onSelectItem}
-        onRowClick={(conductor) => router.push(`/conductores/${conductor.id}`)}
+        onRowClick={(conductor) => abrirModalDetalle(conductor.id)}
         className="rounded-lg shadow-sm"
         getItemId={(item) => item.id}
       />
