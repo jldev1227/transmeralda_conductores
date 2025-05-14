@@ -1,11 +1,14 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { AxiosError, isAxiosError } from "axios";
 
 import { apiClient } from "@/config/apiClient";
 import LoadingPage from "@/components/ui/loadingPage";
 import { SortDescriptor } from "@/components/ui/customTable";
+import socketService from "@/services/socketService";
+import { useAuth } from "./AuthContext";
+import { addToast } from "@heroui/toast";
 
 // Enumeraciones
 export enum SedeTrabajo {
@@ -118,7 +121,7 @@ export interface BusquedaParams {
 }
 
 export interface ActualizarConductorRequest
-  extends Partial<CrearConductorRequest> {}
+  extends Partial<CrearConductorRequest> { }
 
 export interface ConductorAuthResult {
   conductor: Omit<Conductor, "password">;
@@ -237,6 +240,12 @@ export const getEstadoLabel = (estado: EstadoConductor): string => {
   }
 };
 
+export interface SocketEventLog {
+  eventName: string;
+  data: any;
+  timestamp: Date;
+}
+
 // Definición del contexto
 interface ConductorContextType {
   // Estado
@@ -261,37 +270,17 @@ interface ConductorContextType {
   handleSortChange: (descriptor: SortDescriptor) => void;
   clearError: () => void;
   setCurrentConductor: (conductor: Conductor | null) => void;
+
+  // Propiedades para Socket.IO
+  socketConnected: boolean;
+  socketEventLogs: SocketEventLog[];
+  clearSocketEventLogs: () => void;
+  connectSocket?: (userId: string) => void;
+  disconnectSocket?: () => void;
 }
 
-// Valor predeterminado para el contexto
-const defaultConductorContext: ConductorContextType = {
-  conductoresState: {
-    data: [],
-    count: 0,
-    totalPages: 1,
-    currentPage: 1,
-  },
-  currentConductor: null,
-  loading: false,
-  error: null,
-  validationErrors: null,
-
-  fetchConductores: async () => {},
-  getConductor: async () => null,
-  crearConductor: async () => null,
-  actualizarConductor: async () => null,
-  eliminarConductor: async () => false,
-
-  handlePageChange: () => {},
-  handleSortChange: () => {},
-  clearError: () => {},
-  setCurrentConductor: () => {},
-};
-
 // Crear el contexto
-const ConductorContext = createContext<ConductorContextType>(
-  defaultConductorContext,
-);
+const ConductorContext = createContext<ConductorContextType | undefined>(undefined)
 
 // Proveedor del contexto
 export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -313,6 +302,12 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     ValidationError[] | null
   >(null);
   const [initializing, setInitializing] = useState<boolean>(true);
+
+  // Estado para Socket.IO
+  const [socketConnected, setSocketConnected] = useState<boolean>(false);
+  const [socketEventLogs, setSocketEventLogs] = useState<SocketEventLog[]>([]);
+  const { user } = useAuth();
+
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "nombre",
     direction: "ascending",
@@ -620,6 +615,55 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     }, 5000); // 5 segundos máximo de espera
 
     return () => clearTimeout(timeoutId);
+  }, []);
+
+  // Inicializar Socket.IO cuando el usuario esté autenticado
+  useEffect(() => {
+    if (user?.id) {
+      // Conectar socket
+      socketService.connect(user.id);
+
+      // Verificar conexión inicial y configurar manejo de eventos de conexión
+      const checkConnection = () => {
+        const isConnected = socketService.isConnected();
+
+        setSocketConnected(isConnected);
+      };
+
+      // Verificar estado inicial
+      checkConnection();
+
+      // Manejar eventos de conexión
+      const handleConnect = () => {
+        setSocketConnected(true);
+      };
+
+      const handleDisconnect = () => {
+        setSocketConnected(false);
+        addToast({
+          title: "Error",
+          description: "Desconectado de actualizaciones en tiempo real",
+          color: "danger",
+        });
+      };
+
+      // Registrar manejadores de eventos de conexión
+      socketService.on("connect", handleConnect);
+      socketService.on("disconnect", handleDisconnect);
+
+      // Registrar manejadores de eventos de servicios
+      
+      return () => {
+        // Limpiar al desmontar
+        socketService.off("connect");
+        socketService.off("disconnect");
+      };
+    }
+  }, [user?.id]);
+
+  // Función para limpiar el registro de eventos de socket
+  const clearSocketEventLogs = useCallback(() => {
+    setSocketEventLogs([]);
   }, []);
 
   // Contexto que será proporcionado

@@ -16,6 +16,7 @@ import ModalDetalleConductor from "@/components/ui/modalDetalle";
 import BuscadorFiltrosConductores, {
   FilterOptions,
 } from "@/components/ui/buscadorFiltros";
+import { Alert } from "@heroui/alert";
 
 export default function GestionConductores() {
   const {
@@ -215,6 +216,13 @@ export default function GestionConductores() {
           Nuevo Conductor
         </Button>
       </div>
+      <Alert
+        className="py-2"
+        color="success"
+        radius="sm"
+        title="Obteniendo cambios en tiempo real"
+        variant="faded"
+      />
 
       {/* Componente de búsqueda y filtros */}
       <BuscadorFiltrosConductores
