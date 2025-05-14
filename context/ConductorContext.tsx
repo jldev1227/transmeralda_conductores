@@ -2,22 +2,23 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { AxiosError, isAxiosError } from "axios";
+
 import { apiClient } from "@/config/apiClient";
 import LoadingPage from "@/components/ui/loadingPage";
 import { SortDescriptor } from "@/components/ui/customTable";
 
 // Enumeraciones
 export enum SedeTrabajo {
-  YOPAL = 'Yopal',
-  VILLANUEVA = 'Villanueva',
-  TAURAMENA = 'Tauramena'
+  YOPAL = "Yopal",
+  VILLANUEVA = "Villanueva",
+  TAURAMENA = "Tauramena",
 }
 
 export enum EstadoConductor {
-  ACTIVO = 'ACTIVO',
-  INACTIVO = 'INACTIVO',
-  SUSPENDIDO = 'SUSPENDIDO',
-  RETIRADO = 'RETIRADO'
+  ACTIVO = "ACTIVO",
+  INACTIVO = "INACTIVO",
+  SUSPENDIDO = "SUSPENDIDO",
+  RETIRADO = "RETIRADO",
 }
 
 // Interfaces
@@ -75,7 +76,6 @@ export interface Conductor {
   createdAt?: Date;
   updatedAt?: Date;
   creado_por_id?: string;
-
 }
 
 export interface CrearConductorRequest {
@@ -108,19 +108,20 @@ export interface CrearConductorRequest {
 export interface BusquedaParams {
   page?: number;
   limit?: number;
-  search?: string;     // Para búsqueda general (nombre, apellido, correo, etc.)
+  search?: string; // Para búsqueda general (nombre, apellido, correo, etc.)
   estado?: EstadoConductor | EstadoConductor[];
   sede_trabajo?: SedeTrabajo | SedeTrabajo[];
   tipo_identificacion?: string | string[];
   tipo_contrato?: string | string[];
   sort?: string;
-  order?: 'ASC' | 'DESC';
+  order?: "ASC" | "DESC";
 }
 
-export interface ActualizarConductorRequest extends Partial<CrearConductorRequest> { }
+export interface ActualizarConductorRequest
+  extends Partial<CrearConductorRequest> {}
 
 export interface ConductorAuthResult {
-  conductor: Omit<Conductor, 'password'>;
+  conductor: Omit<Conductor, "password">;
   token: string;
 }
 
@@ -170,53 +171,53 @@ export const getEstadoColor = (estado: EstadoConductor) => {
   switch (estado) {
     case EstadoConductor.ACTIVO:
       return {
-        bg: 'bg-green-100',
-        text: 'text-green-800',
-        border: 'border-green-200',
-        dot: 'bg-green-500',
-        badge: 'bg-green-100 text-green-800',
-        color: '#16a34a',
-        lightColor: '#dcfce7'
+        bg: "bg-green-100",
+        text: "text-green-800",
+        border: "border-green-200",
+        dot: "bg-green-500",
+        badge: "bg-green-100 text-green-800",
+        color: "#16a34a",
+        lightColor: "#dcfce7",
       };
     case EstadoConductor.INACTIVO:
       return {
-        bg: 'bg-gray-100',
-        text: 'text-gray-800',
-        border: 'border-gray-200',
-        dot: 'bg-gray-500',
-        badge: 'bg-gray-100 text-gray-800',
-        color: '#71717a',
-        lightColor: '#f4f4f5'
+        bg: "bg-gray-100",
+        text: "text-gray-800",
+        border: "border-gray-200",
+        dot: "bg-gray-500",
+        badge: "bg-gray-100 text-gray-800",
+        color: "#71717a",
+        lightColor: "#f4f4f5",
       };
     case EstadoConductor.SUSPENDIDO:
       return {
-        bg: 'bg-yellow-100',
-        text: 'text-yellow-800',
-        border: 'border-yellow-200',
-        dot: 'bg-yellow-500',
-        badge: 'bg-yellow-100 text-yellow-800',
-        color: '#ca8a04',
-        lightColor: '#fef9c3'
+        bg: "bg-yellow-100",
+        text: "text-yellow-800",
+        border: "border-yellow-200",
+        dot: "bg-yellow-500",
+        badge: "bg-yellow-100 text-yellow-800",
+        color: "#ca8a04",
+        lightColor: "#fef9c3",
       };
     case EstadoConductor.RETIRADO:
       return {
-        bg: 'bg-red-100',
-        text: 'text-red-800',
-        border: 'border-red-200',
-        dot: 'bg-red-500',
-        badge: 'bg-red-100 text-red-800',
-        color: '#dc2626',
-        lightColor: '#fee2e2'
+        bg: "bg-red-100",
+        text: "text-red-800",
+        border: "border-red-200",
+        dot: "bg-red-500",
+        badge: "bg-red-100 text-red-800",
+        color: "#dc2626",
+        lightColor: "#fee2e2",
       };
     default:
       return {
-        bg: 'bg-gray-100',
-        text: 'text-gray-800',
-        border: 'border-gray-200',
-        dot: 'bg-gray-500',
-        badge: 'bg-gray-100 text-gray-800',
-        color: '#71717a',
-        lightColor: '#f4f4f5'
+        bg: "bg-gray-100",
+        text: "text-gray-800",
+        border: "border-gray-200",
+        dot: "bg-gray-500",
+        badge: "bg-gray-100 text-gray-800",
+        color: "#71717a",
+        lightColor: "#f4f4f5",
       };
   }
 };
@@ -224,15 +225,15 @@ export const getEstadoColor = (estado: EstadoConductor) => {
 export const getEstadoLabel = (estado: EstadoConductor): string => {
   switch (estado) {
     case EstadoConductor.ACTIVO:
-      return 'Activo';
+      return "Activo";
     case EstadoConductor.INACTIVO:
-      return 'Inactivo';
+      return "Inactivo";
     case EstadoConductor.SUSPENDIDO:
-      return 'Suspendido';
+      return "Suspendido";
     case EstadoConductor.RETIRADO:
-      return 'Retirado';
+      return "Retirado";
     default:
-      return 'Desconocido';
+      return "Desconocido";
   }
 };
 
@@ -249,7 +250,10 @@ interface ConductorContextType {
   fetchConductores: (page?: number) => Promise<void>;
   getConductor: (id: string) => Promise<Conductor | null>;
   crearConductor: (data: CrearConductorRequest) => Promise<Conductor | null>;
-  actualizarConductor: (id: string, data: ActualizarConductorRequest) => Promise<Conductor | null>;
+  actualizarConductor: (
+    id: string,
+    data: ActualizarConductorRequest,
+  ) => Promise<Conductor | null>;
   eliminarConductor: (id: string) => Promise<boolean>;
 
   // Funciones de utilidad
@@ -265,41 +269,49 @@ const defaultConductorContext: ConductorContextType = {
     data: [],
     count: 0,
     totalPages: 1,
-    currentPage: 1
+    currentPage: 1,
   },
   currentConductor: null,
   loading: false,
   error: null,
   validationErrors: null,
 
-  fetchConductores: async () => { },
+  fetchConductores: async () => {},
   getConductor: async () => null,
   crearConductor: async () => null,
   actualizarConductor: async () => null,
   eliminarConductor: async () => false,
 
-  handlePageChange: () => { },
-  handleSortChange: () => { },
-  clearError: () => { },
-  setCurrentConductor: () => { },
+  handlePageChange: () => {},
+  handleSortChange: () => {},
+  clearError: () => {},
+  setCurrentConductor: () => {},
 };
 
 // Crear el contexto
-const ConductorContext = createContext<ConductorContextType>(defaultConductorContext);
+const ConductorContext = createContext<ConductorContextType>(
+  defaultConductorContext,
+);
 
 // Proveedor del contexto
-export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   // Estados
   const [conductoresState, setConductoresState] = useState<ConductoresState>({
     data: [],
     count: 0,
     totalPages: 1,
-    currentPage: 1
+    currentPage: 1,
   });
-  const [currentConductor, setCurrentConductor] = useState<Conductor | null>(null);
+  const [currentConductor, setCurrentConductor] = useState<Conductor | null>(
+    null,
+  );
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<ValidationError[] | null>(null);
+  const [validationErrors, setValidationErrors] = useState<
+    ValidationError[] | null
+  >(null);
   const [initializing, setInitializing] = useState<boolean>(true);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "nombre",
@@ -350,137 +362,163 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   // Operaciones CRUD
-const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
-  setLoading(true);
-  clearError();
+  const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
+    setLoading(true);
+    clearError();
 
-  try {
-    // Prepara los parámetros básicos
-    const params: any = {
-      page: paramsBusqueda.page || conductoresState.currentPage,
-      limit: paramsBusqueda.limit || 10,
-      sort: paramsBusqueda.sort || sortDescriptor.column,
-      order: paramsBusqueda.order || sortDescriptor.direction
-    };
-    
-    // Añade el término de búsqueda si existe
-    if (paramsBusqueda.search) {
-      params.search = paramsBusqueda.search;
-    }
-    
-    // Añade filtros de estado
-    if (paramsBusqueda.estado) {
-      if (Array.isArray(paramsBusqueda.estado)) {
-        params.estado = paramsBusqueda.estado.join(',');
-      } else {
-        params.estado = paramsBusqueda.estado;
-      }
-    }
-    
-    // Añade filtros de sede
-    if (paramsBusqueda.sede_trabajo) {
-      if (Array.isArray(paramsBusqueda.sede_trabajo)) {
-        params.sede_trabajo = paramsBusqueda.sede_trabajo.join(',');
-      } else {
-        params.sede_trabajo = paramsBusqueda.sede_trabajo;
-      }
-    }
-    
-    // Añade filtros de tipo de identificación
-    if (paramsBusqueda.tipo_identificacion) {
-      if (Array.isArray(paramsBusqueda.tipo_identificacion)) {
-        params.tipo_identificacion = paramsBusqueda.tipo_identificacion.join(',');
-      } else {
-        params.tipo_identificacion = paramsBusqueda.tipo_identificacion;
-      }
-    }
-    
-    // Añade filtros de tipo de contrato
-    if (paramsBusqueda.tipo_contrato) {
-      if (Array.isArray(paramsBusqueda.tipo_contrato)) {
-        params.tipo_contrato = paramsBusqueda.tipo_contrato.join(',');
-      } else {
-        params.tipo_contrato = paramsBusqueda.tipo_contrato;
-      }
-    }
+    try {
+      // Prepara los parámetros básicos
+      const params: any = {
+        page: paramsBusqueda.page || conductoresState.currentPage,
+        limit: paramsBusqueda.limit || 10,
+        sort: paramsBusqueda.sort || sortDescriptor.column,
+        order: paramsBusqueda.order || sortDescriptor.direction,
+      };
 
-    const response = await apiClient.get<ApiResponse<Conductor[]>>("/api/conductores", {
-      params
-    });
+      // Añade el término de búsqueda si existe
+      if (paramsBusqueda.search) {
+        params.search = paramsBusqueda.search;
+      }
 
-    if (response.data && response.data.success) {
-      setConductoresState({
-        data: response.data.data,
-        count: response.data.count || 0,
-        totalPages: response.data.totalPages || 1,
-        currentPage: parseInt(params.page) || 1
-      });
-      return;
-    } else {
-      throw new Error("Respuesta no exitosa del servidor");
+      // Añade filtros de estado
+      if (paramsBusqueda.estado) {
+        if (Array.isArray(paramsBusqueda.estado)) {
+          params.estado = paramsBusqueda.estado.join(",");
+        } else {
+          params.estado = paramsBusqueda.estado;
+        }
+      }
+
+      // Añade filtros de sede
+      if (paramsBusqueda.sede_trabajo) {
+        if (Array.isArray(paramsBusqueda.sede_trabajo)) {
+          params.sede_trabajo = paramsBusqueda.sede_trabajo.join(",");
+        } else {
+          params.sede_trabajo = paramsBusqueda.sede_trabajo;
+        }
+      }
+
+      // Añade filtros de tipo de identificación
+      if (paramsBusqueda.tipo_identificacion) {
+        if (Array.isArray(paramsBusqueda.tipo_identificacion)) {
+          params.tipo_identificacion =
+            paramsBusqueda.tipo_identificacion.join(",");
+        } else {
+          params.tipo_identificacion = paramsBusqueda.tipo_identificacion;
+        }
+      }
+
+      // Añade filtros de tipo de contrato
+      if (paramsBusqueda.tipo_contrato) {
+        if (Array.isArray(paramsBusqueda.tipo_contrato)) {
+          params.tipo_contrato = paramsBusqueda.tipo_contrato.join(",");
+        } else {
+          params.tipo_contrato = paramsBusqueda.tipo_contrato;
+        }
+      }
+
+      const response = await apiClient.get<ApiResponse<Conductor[]>>(
+        "/api/conductores",
+        {
+          params,
+        },
+      );
+
+      if (response.data && response.data.success) {
+        setConductoresState({
+          data: response.data.data,
+          count: response.data.count || 0,
+          totalPages: response.data.totalPages || 1,
+          currentPage: parseInt(params.page) || 1,
+        });
+
+        return;
+      } else {
+        throw new Error("Respuesta no exitosa del servidor");
+      }
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Error al obtener conductores");
+
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+      setInitializing(false);
     }
-  } catch (err) {
-    const errorMessage = handleApiError(err, "Error al obtener conductores");
-    setError(errorMessage);
-  } finally {
-    setLoading(false);
-    setInitializing(false);
-  }
-};
+  };
 
   const getConductor = async (id: string): Promise<Conductor | null> => {
     setLoading(true);
     clearError();
 
     try {
-      const response = await apiClient.get<ApiResponse<Conductor>>(`/api/conductores/${id}`);
+      const response = await apiClient.get<ApiResponse<Conductor>>(
+        `/api/conductores/${id}`,
+      );
 
       if (response.data && response.data.success) {
         const conductor = response.data.data;
+
         setCurrentConductor(conductor);
+
         return conductor;
       } else {
         throw new Error("Respuesta no exitosa del servidor");
       }
     } catch (err) {
       const errorMessage = handleApiError(err, "Error al obtener el conductor");
+
       setError(errorMessage);
+
       return null;
     } finally {
       setLoading(false);
     }
   };
 
-  const crearConductor = async (data: CrearConductorRequest): Promise<Conductor | null> => {
+  const crearConductor = async (
+    data: CrearConductorRequest,
+  ): Promise<Conductor | null> => {
     setLoading(true);
     clearError();
 
     try {
-      const response = await apiClient.post<ApiResponse<Conductor>>("/api/conductores", data);
+      const response = await apiClient.post<ApiResponse<Conductor>>(
+        "/api/conductores",
+        data,
+      );
 
-      console.log(response)
+      console.log(response);
       if (response.data && response.data.success) {
         // Actualizar la lista de conductores después de crear uno nuevo
         fetchConductores(1);
+
         return response.data.data;
       } else {
         throw new Error("Respuesta no exitosa del servidor");
       }
     } catch (err) {
       const errorMessage = handleApiError(err, "Error al crear el conductor");
+
       setError(errorMessage);
+
       return null;
     } finally {
       setLoading(false);
     }
   };
 
-  const actualizarConductor = async (id: string, data: ActualizarConductorRequest): Promise<Conductor | null> => {
+  const actualizarConductor = async (
+    id: string,
+    data: ActualizarConductorRequest,
+  ): Promise<Conductor | null> => {
     setLoading(true);
     clearError();
 
     try {
-      const response = await apiClient.put<ApiResponse<Conductor>>(`/api/conductores/${id}`, data);
+      const response = await apiClient.put<ApiResponse<Conductor>>(
+        `/api/conductores/${id}`,
+        data,
+      );
 
       if (response.data && response.data.success) {
         const conductorActualizado = response.data.data;
@@ -498,8 +536,13 @@ const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
         throw new Error("Respuesta no exitosa del servidor");
       }
     } catch (err) {
-      const errorMessage = handleApiError(err, "Error al actualizar el conductor");
+      const errorMessage = handleApiError(
+        err,
+        "Error al actualizar el conductor",
+      );
+
       setError(errorMessage);
+
       return null;
     } finally {
       setLoading(false);
@@ -511,7 +554,9 @@ const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
     clearError();
 
     try {
-      const response = await apiClient.delete<ApiResponse<any>>(`/api/conductores/${id}`);
+      const response = await apiClient.delete<ApiResponse<any>>(
+        `/api/conductores/${id}`,
+      );
 
       if (response.data && response.data.success) {
         // Si el conductor eliminado es el actual, limpiarlo
@@ -527,8 +572,13 @@ const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
         throw new Error("Respuesta no exitosa del servidor");
       }
     } catch (err) {
-      const errorMessage = handleApiError(err, "Error al eliminar el conductor");
+      const errorMessage = handleApiError(
+        err,
+        "Error al eliminar el conductor",
+      );
+
       setError(errorMessage);
+
       return false;
     } finally {
       setLoading(false);
@@ -537,17 +587,17 @@ const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
 
   // Funciones de utilidad
   const handlePageChange = (page: number) => {
-    setConductoresState(prevState => ({
+    setConductoresState((prevState) => ({
       ...prevState,
-      currentPage: page
+      currentPage: page,
     }));
   };
 
   const handleSortChange = (descriptor: SortDescriptor) => {
     setSortDescriptor(descriptor);
-    setConductoresState(prevState => ({
+    setConductoresState((prevState) => ({
       ...prevState,
-      currentPage: 1
+      currentPage: 1,
     }));
     fetchConductores(1);
   };
@@ -609,7 +659,9 @@ export const useConductor = (): ConductorContextType => {
   const context = useContext(ConductorContext);
 
   if (!context) {
-    throw new Error("useConductor debe ser usado dentro de un ConductorProvider");
+    throw new Error(
+      "useConductor debe ser usado dentro de un ConductorProvider",
+    );
   }
 
   return context;

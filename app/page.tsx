@@ -1,17 +1,29 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect } from "react";
-import { Conductor, useConductor, BusquedaParams } from "@/context/ConductorContext";
-import ConductoresTable from "@/components/ui/table";
-import { SortDescriptor } from "@/components/ui/customTable";
 import { Button } from "@heroui/button";
 import { PlusIcon } from "lucide-react";
+
+import {
+  Conductor,
+  useConductor,
+  BusquedaParams,
+} from "@/context/ConductorContext";
+import ConductoresTable from "@/components/ui/table";
+import { SortDescriptor } from "@/components/ui/customTable";
 import ModalForm from "@/components/ui/modalForm";
 import ModalDetalleConductor from "@/components/ui/modalDetalle";
-import BuscadorFiltrosConductores, { FilterOptions } from "@/components/ui/buscadorFiltros";
+import BuscadorFiltrosConductores, {
+  FilterOptions,
+} from "@/components/ui/buscadorFiltros";
 
 export default function GestionConductores() {
-  const { conductoresState, fetchConductores, crearConductor, actualizarConductor } = useConductor();
+  const {
+    conductoresState,
+    fetchConductores,
+    crearConductor,
+    actualizarConductor,
+  } = useConductor();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "nombre",
@@ -24,15 +36,18 @@ export default function GestionConductores() {
     sedes: [],
     tiposIdentificacion: [],
     tiposContrato: [],
-    estados: []
+    estados: [],
   });
   const [loading, setLoading] = useState<boolean>(false);
 
   // Estados para los modales
   const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
-  const [selectedConductorId, setSelectedConductorId] = useState<string | null>(null);
+  const [selectedConductorId, setSelectedConductorId] = useState<string | null>(
+    null,
+  );
   const [modalFormOpen, setModalFormOpen] = useState(false);
-  const [conductorParaEditar, setConductorParaEditar] = useState<Conductor | null>(null);
+  const [conductorParaEditar, setConductorParaEditar] =
+    useState<Conductor | null>(null);
 
   // Inicialización: cargar conductores
   useEffect(() => {
@@ -42,37 +57,37 @@ export default function GestionConductores() {
   // Función para cargar conductores con parámetros de búsqueda/filtros
   const cargarConductores = async (page: number = 1) => {
     setLoading(true);
-    
+
     try {
       // Construir parámetros de búsqueda
       const params: BusquedaParams = {
         page,
         sort: sortDescriptor.column,
-        order: sortDescriptor.direction === 'ascending' ? 'ASC' : 'DESC'
+        order: sortDescriptor.direction === "ascending" ? "ASC" : "DESC",
       };
-      
+
       // Añadir término de búsqueda
       if (searchTerm) {
         params.search = searchTerm;
       }
-      
+
       // Añadir filtros
       if (filtros.sedes.length > 0) {
         params.sede_trabajo = filtros.sedes as any;
       }
-      
+
       if (filtros.tiposIdentificacion.length > 0) {
         params.tipo_identificacion = filtros.tiposIdentificacion;
       }
-      
+
       if (filtros.tiposContrato.length > 0) {
         params.tipo_contrato = filtros.tiposContrato;
       }
-      
+
       if (filtros.estados.length > 0) {
         params.estado = filtros.estados as any;
       }
-      
+
       // Realizar la búsqueda
       await fetchConductores(params);
     } catch (error) {
@@ -112,22 +127,16 @@ export default function GestionConductores() {
       sedes: [],
       tiposIdentificacion: [],
       tiposContrato: [],
-      estados: []
+      estados: [],
     });
-    
-    await cargarConductores(1); // Volver a la primera página sin filtros
-  };
 
-  // Manejar exportación (ejemplo)
-  const handleExport = () => {
-    // Implementar la lógica de exportación
-    alert('Funcionalidad de exportación: Implementar según necesidades');
+    await cargarConductores(1); // Volver a la primera página sin filtros
   };
 
   // Manejar la selección de conductores
   const handleSelectItem = (conductor: Conductor) => {
     if (selectedIds.includes(conductor.id)) {
-      setSelectedIds(selectedIds.filter(id => id !== conductor.id));
+      setSelectedIds(selectedIds.filter((id) => id !== conductor.id));
     } else {
       setSelectedIds([...selectedIds, conductor.id]);
     }
@@ -175,12 +184,15 @@ export default function GestionConductores() {
       // Si llegamos aquí, significa que la operación fue exitosa
       // Cerrar modal después de guardar correctamente
       cerrarModalForm();
-      
+
       // Recargar la lista de conductores con los filtros actuales
       await cargarConductores(conductoresState.currentPage);
     } catch (error) {
       // Si hay un error, no hacemos nada aquí ya que los errores ya son manejados
-      console.log("Error al guardar el conductor, el modal permanece abierto:", error);
+      console.log(
+        "Error al guardar el conductor, el modal permanece abierto:",
+        error,
+      );
     } finally {
       setLoading(false);
     }
@@ -195,10 +207,10 @@ export default function GestionConductores() {
         <Button
           className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
           color="primary"
+          isDisabled={loading}
           radius="sm"
           startContent={<PlusIcon />}
           onPress={abrirModalCrear}
-          isDisabled={loading}
         >
           Nuevo Conductor
         </Button>
@@ -206,55 +218,65 @@ export default function GestionConductores() {
 
       {/* Componente de búsqueda y filtros */}
       <BuscadorFiltrosConductores
-        onSearch={handleSearch}
         onFilter={handleFilter}
-        onExport={handleExport}
         onReset={handleReset}
+        onSearch={handleSearch}
       />
 
       {/* Información sobre resultados filtrados */}
-      {(searchTerm || Object.values(filtros).some(f => f.length > 0)) && (
+      {(searchTerm || Object.values(filtros).some((f) => f.length > 0)) && (
         <div className="bg-blue-50 p-3 rounded-md text-blue-700 text-sm">
-          Mostrando {conductoresState.data.length} resultado(s) de {conductoresState.count} conductor(es) total(es)
+          Mostrando {conductoresState.data.length} resultado(s) de{" "}
+          {conductoresState.count} conductor(es) total(es)
           {searchTerm && <span> - Búsqueda: "{searchTerm}"</span>}
         </div>
       )}
 
       {/* Tabla de conductores con paginación */}
       <ConductoresTable
+        abrirModalDetalle={abrirModalDetalle}
+        abrirModalEditar={abrirModalEditar}
         currentItems={conductoresState.data}
-        sortDescriptor={sortDescriptor}
+        isLoading={loading}
         selectedIds={selectedIds}
+        sortDescriptor={sortDescriptor}
+        totalCount={conductoresState.count}
+        totalPages={conductoresState.totalPages}
+        onPageChange={handlePageChange}
+        onSortChange={handleSortChange}
         onSelectItem={handleSelectItem}
         // Propiedades de paginación
         currentPage={conductoresState.currentPage}
-        totalPages={conductoresState.totalPages}
-        totalCount={conductoresState.count}
-        onPageChange={handlePageChange}
-        onSortChange={handleSortChange}
-        abrirModalEditar={abrirModalEditar}
-        abrirModalDetalle={abrirModalDetalle}
-        isLoading={loading}
       />
 
       {/* Modal de formulario (crear/editar) */}
       <ModalForm
+        conductorEditar={conductorParaEditar}
         isOpen={modalFormOpen}
+        titulo={
+          conductorParaEditar ? "Editar Conductor" : "Registrar Nuevo Conductor"
+        }
         onClose={cerrarModalForm}
         onSave={guardarConductor}
-        conductorEditar={conductorParaEditar}
-        titulo={conductorParaEditar ? "Editar Conductor" : "Registrar Nuevo Conductor"}
       />
 
       {/* Modal de detalle */}
       <ModalDetalleConductor
+        conductor={
+          conductoresState.data.find(
+            (conductor) => conductor.id === selectedConductorId,
+          ) || null
+        }
         isOpen={modalDetalleOpen}
         onClose={cerrarModalDetalle}
-        conductor={conductoresState.data.find(conductor => conductor.id === selectedConductorId) || null}
         onEdit={() => {
           setModalDetalleOpen(false);
           setModalFormOpen(true);
-          setConductorParaEditar(conductoresState.data.find(conductor => conductor.id === selectedConductorId) || null);
+          setConductorParaEditar(
+            conductoresState.data.find(
+              (conductor) => conductor.id === selectedConductorId,
+            ) || null,
+          );
         }}
       />
     </div>

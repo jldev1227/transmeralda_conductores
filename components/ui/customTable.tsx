@@ -1,6 +1,5 @@
 import React from "react";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
-import { useMediaQuery } from "react-responsive";
 
 export type SortDescriptor = {
   column: string;
@@ -40,7 +39,6 @@ const CustomTable: React.FC<CustomTableProps> = ({
   className = "",
   onRowClick,
 }) => {
-
   // Manejar cambio de ordenamiento
   const handleSort = (column: string) => {
     if (
@@ -67,8 +65,9 @@ const CustomTable: React.FC<CustomTableProps> = ({
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.allowsSorting ? "cursor-pointer hover:bg-gray-100" : ""
-                  }`}
+                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                  column.allowsSorting ? "cursor-pointer hover:bg-gray-100" : ""
+                }`}
                 scope="col"
                 onClick={() => column.allowsSorting && handleSort(column.key)}
               >
@@ -91,17 +90,17 @@ const CustomTable: React.FC<CustomTableProps> = ({
             <tr>
               <td
                 className="px-6 py-4 whitespace-nowrap"
+                colSpan={columns.length}
               >
-                {loadingContent || (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
-                  </div>
-                )}
+                {loadingContent}
               </td>
             </tr>
           ) : data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-6 py-4 whitespace-nowrap">
+              <td
+                className="px-6 py-4 whitespace-nowrap"
+                colSpan={columns.length}
+              >
                 {emptyContent}
               </td>
             </tr>
