@@ -1,30 +1,122 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-import { Conductor, useConductor } from "@/context/ConductorContext";
+import { Conductor, useConductor, EstadoConductor } from "@/context/ConductorContext";
 import ConductoresTable from "@/components/ui/table";
 import { SortDescriptor } from "@/components/ui/customTable";
 import { Button } from "@heroui/button";
 import { PlusIcon } from "lucide-react";
 import ModalForm from "@/components/ui/modalForm";
 import ModalDetalleConductor from "@/components/ui/modalDetalle";
-
+import BuscadorFiltrosConductores, { FilterOptions } from "@/components/ui/buscadorFiltros";
 
 export default function GestionConductores() {
-  const { conductoresState, handlePageChange, handleSortChange, crearConductor, actualizarConductor } = useConductor()
+  const { conductoresState, handlePageChange, handleSortChange, crearConductor, actualizarConductor, fetchConductores } = useConductor();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sortDescriptor, _] = useState<SortDescriptor>({
     column: "nombre",
     direction: "ascending",
   });
+
+  // Estados para búsqueda y filtros
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filtros, setFiltros] = useState<FilterOptions>({
+    sedes: [],
+    tiposIdentificacion: [],
+    tiposContrato: [],
+    estados: []
+  });
+  const [conductoresFiltrados, setConductoresFiltrados] = useState<Conductor[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+
   // Estados para los modales
   const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
   const [selectedConductorId, setSelectedConductorId] = useState<string | null>(null);
-
-  // Estados para el modal de formulario (crear/editar)
   const [modalFormOpen, setModalFormOpen] = useState(false);
   const [conductorParaEditar, setConductorParaEditar] = useState<Conductor | null>(null);
+
+  // Efecto para aplicar filtros y búsqueda
+  useEffect(() => {
+    filtrarConductores();
+  }, [conductoresState.data, searchTerm, filtros]);
+
+  // Función para filtrar conductores basados en búsqueda y filtros
+  const filtrarConductores = () => {
+    let resultados = [...conductoresState.data];
+
+    // Aplicar búsqueda
+    if (searchTerm) {
+      const termino = searchTerm.toLowerCase();
+      resultados = resultados.filter(conductor => 
+        conductor.nombre.toLowerCase().includes(termino) ||
+        conductor.apellido.toLowerCase().includes(termino) ||
+        conductor.email?.toLowerCase().includes(termino) ||
+        conductor.numero_identificacion?.toLowerCase().includes(termino) ||
+        conductor.telefono?.toLowerCase().includes(termino)
+      );
+    }
+
+    // Aplicar filtros de sede
+    if (filtros.sedes.length > 0) {
+      resultados = resultados.filter(conductor => 
+        conductor.sede_trabajo && filtros.sedes.includes(conductor.sede_trabajo)
+      );
+    }
+
+    // Aplicar filtros de tipo de identificación
+    if (filtros.tiposIdentificacion.length > 0) {
+      resultados = resultados.filter(conductor => 
+        filtros.tiposIdentificacion.includes(conductor.tipo_identificacion)
+      );
+    }
+
+    // Aplicar filtros de tipo de contrato
+    if (filtros.tiposContrato.length > 0) {
+      resultados = resultados.filter(conductor => 
+        conductor.tipo_contrato && filtros.tiposContrato.includes(conductor.tipo_contrato)
+      );
+    }
+
+    // Aplicar filtros de estado
+    if (filtros.estados.length > 0) {
+      resultados = resultados.filter(conductor => 
+        filtros.estados.includes(conductor.estado)
+      );
+    }
+
+    setConductoresFiltrados(resultados);
+  };
+
+  // Manejar la búsqueda
+  const handleSearch = (termino: string) => {
+    setSearchTerm(termino);
+    console.log(termino)
+  };
+
+  // Manejar los filtros
+  const handleFilter = (nuevosFiltros: FilterOptions) => {
+    setFiltros(nuevosFiltros);
+  };
+
+  // Manejar reset de búsqueda y filtros
+  const handleReset = () => {
+    setSearchTerm("");
+    setFiltros({
+      sedes: [],
+      tiposIdentificacion: [],
+      tiposContrato: [],
+      estados: []
+    });
+    // Opcional: Recargar los datos
+    fetchConductores(1);
+  };
+
+  // Manejar exportación (ejemplo)
+  const handleExport = () => {
+    // Implementar la lógica de exportación
+    alert('Funcionalidad de exportación: Implementar según necesidades');
+  };
 
   // Manejar la selección de conductores
   const handleSelectItem = (conductor: Conductor) => {
@@ -34,7 +126,6 @@ export default function GestionConductores() {
       setSelectedIds([...selectedIds, conductor.id]);
     }
   };
-
 
   // Funciones para el modal de detalle
   const abrirModalDetalle = (id: string) => {
@@ -66,35 +157,28 @@ export default function GestionConductores() {
   // Función para guardar conductor (nueva o editada)
   const guardarConductor = async (conductorData: Conductor) => {
     try {
+      setLoading(true);
       if (conductorData.id) {
-        // Editar empresa existente
-        console.log("actualizando")
-        await actualizarConductor(conductorData.id, conductorData)
+        // Editar conductor existente
+        await actualizarConductor(conductorData.id, conductorData);
       } else {
-        // Crear nueva empresa
-        console.log("creando")
-        await crearConductor(conductorData)
+        // Crear nuevo conductor
+        await crearConductor(conductorData);
       }
 
       // Si llegamos aquí, significa que la operación fue exitosa
       // Cerrar modal después de guardar correctamente
       cerrarModalForm();
-
     } catch (error) {
       // Si hay un error, no hacemos nada aquí ya que los errores ya son manejados
-      // en las funciones createEmpresa y updateEmpresa con addToast
-
-      // No cerramos el modal para que el usuario pueda corregir los datos
-      console.log("Error al guardar la empresa, el modal permanece abierto:", error);
-
-      // Opcionalmente, puedes agregar un mensaje adicional para el usuario
-      // indicando que debe corregir los errores para continuar
+      console.log("Error al guardar el conductor, el modal permanece abierto:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-
   return (
-    <div className="container mx-auto p-10 space-y-5">
+    <div className="container mx-auto p-5 sm:p-10 space-y-5">
       <div className="flex gap-3 flex-col sm:flex-row w-full items-start md:items-center justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">
           Gestión de Conductores
@@ -105,14 +189,33 @@ export default function GestionConductores() {
           radius="sm"
           startContent={<PlusIcon />}
           onPress={abrirModalCrear}
+          isDisabled={loading}
         >
           Nuevo Conductor
         </Button>
       </div>
 
+      {/* Componente de búsqueda y filtros */}
+      <BuscadorFiltrosConductores
+        onSearch={handleSearch}
+        onFilter={handleFilter}
+        onExport={handleExport}
+        onReset={handleReset}
+      />
+
+      {/* Información sobre resultados filtrados */}
+      {(searchTerm || Object.values(filtros).some(f => f.length > 0)) && (
+        <div className="bg-blue-50 p-3 rounded-md text-blue-700 text-sm">
+          Mostrando {conductoresFiltrados.length} resultado(s) de {conductoresState.count} conductor(es) total(es)
+          {searchTerm && <span> - Búsqueda: "{searchTerm}"</span>}
+        </div>
+      )}
+
       {/* Tabla de conductores con paginación */}
       <ConductoresTable
-        currentItems={conductoresState.data}
+        currentItems={searchTerm || Object.values(filtros).some(f => f.length > 0) 
+          ? conductoresFiltrados 
+          : conductoresState.data}
         sortDescriptor={sortDescriptor}
         selectedIds={selectedIds}
         onSelectItem={handleSelectItem}
@@ -124,6 +227,7 @@ export default function GestionConductores() {
         onSortChange={handleSortChange}
         abrirModalEditar={abrirModalEditar}
         abrirModalDetalle={abrirModalDetalle}
+        isLoading={loading}
       />
 
       {/* Modal de formulario (crear/editar) */}
@@ -135,17 +239,17 @@ export default function GestionConductores() {
         titulo={conductorParaEditar ? "Editar Conductor" : "Registrar Nuevo Conductor"}
       />
 
+      {/* Modal de detalle */}
       <ModalDetalleConductor
         isOpen={modalDetalleOpen}
         onClose={cerrarModalDetalle}
-        conductor={conductoresState.data.filter(conductor=> conductor.id === selectedConductorId)[0]}
+        conductor={conductoresState.data.find(conductor => conductor.id === selectedConductorId) || null}
         onEdit={() => {
           setModalDetalleOpen(false);
           setModalFormOpen(true);
-          setConductorParaEditar(conductoresState.data.filter(conductor=> conductor.id === selectedConductorId)[0])
+          setConductorParaEditar(conductoresState.data.find(conductor => conductor.id === selectedConductorId) || null);
         }}
       />
-
     </div>
   );
 }

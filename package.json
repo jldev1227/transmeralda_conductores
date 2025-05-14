@@ -18,6 +18,7 @@
   "dependencies": {
     "@heroui/badge": "^2.2.12",
     "@heroui/button": "2.2.19",
+    "@heroui/checkbox": "^2.3.18",
     "@heroui/chip": "^2.2.15",
     "@heroui/code": "2.2.14",
     "@heroui/dropdown": "^2.3.19",
