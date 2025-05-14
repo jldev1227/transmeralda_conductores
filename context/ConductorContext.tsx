@@ -401,6 +401,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const response = await apiClient.post<ApiResponse<Conductor>>("/api/conductores", data);
       
+      console.log(response)
       if (response.data && response.data.success) {
         // Actualizar la lista de conductores después de crear uno nuevo
         fetchConductores(1);

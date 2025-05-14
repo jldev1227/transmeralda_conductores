@@ -11,7 +11,7 @@ import ModalForm from "@/components/ui/modalForm";
 
 
 export default function GestionConductores() {
-  const { conductoresState, handlePageChange, handleSortChange } = useConductor()
+  const { conductoresState, handlePageChange, handleSortChange, crearConductor, actualizarConductor } = useConductor()
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sortDescriptor, _] = useState<SortDescriptor>({
     column: "nombre",
@@ -65,9 +65,11 @@ export default function GestionConductores() {
       if (conductorData.id) {
         // Editar empresa existente
         console.log("actualizando")
+        await actualizarConductor(conductorData.id, conductorData)
       } else {
         // Crear nueva empresa
         console.log("creando")
+        await crearConductor(conductorData)
       }
 
       // Si llegamos aquí, significa que la operación fue exitosa

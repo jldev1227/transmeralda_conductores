@@ -20,24 +20,27 @@ import {
 import {
     Switch
 } from "@heroui/switch";
-import { 
-    UserIcon, 
-    SaveIcon, 
+import {
+    UserIcon,
+    SaveIcon,
     CalendarIcon,
     DollarSignIcon,
     TruckIcon,
     HeartPulseIcon,
-    IdCardIcon 
+    IdCardIcon
 } from "lucide-react";
 import { Conductor, EstadoConductor, SedeTrabajo, PermisosConductor } from "@/context/ConductorContext";
 
 interface ModalFormConductorProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (empresa: Conductor) => Promise<void>; // Cambiar a Promise<void>
+    onSave: (conductor: Conductor) => Promise<void>; // Cambiar a Promise<void>
     conductorEditar?: Conductor | null;
     titulo?: string;
 }
+
+type ConductorKey = keyof Conductor;
+
 
 // Tipos de identificación comunes en Colombia
 const tiposIdentificacion = [
@@ -115,7 +118,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
 }) => {
     // Estado para determinar si el conductor es de planta
     const [esPlanta, setEsPlanta] = useState<boolean>(true);
-    
+
     // Estado para almacenar los datos del formulario
     const [formData, setFormData] = useState<Partial<Conductor>>({
         nombre: "",
@@ -153,11 +156,11 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                 // Asegurarse de que la contraseña no se muestre (por seguridad)
                 password: ""
             });
-            
+
             // Determinar si es de planta basado en los campos
             const tieneInfoLaboral = !!(
-                conductorEditar.cargo && 
-                conductorEditar.fecha_ingreso && 
+                conductorEditar.cargo &&
+                conductorEditar.fecha_ingreso &&
                 conductorEditar.salario_base
             );
             setEsPlanta(tieneInfoLaboral);
@@ -220,17 +223,27 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
             setEsPlanta(checked);
             return;
         }
-        
+
         // Para otros switches (como permisos)
         if (name.startsWith("permisos.")) {
             const permisoKey = name.split(".")[1] as keyof PermisosConductor;
-            setFormData(prev => ({
-                ...prev,
-                permisos: {
-                    ...prev.permisos,
-                    [permisoKey]: checked
-                }
-            }));
+            setFormData(prev => {
+                // Asegúrate de que prev.permisos exista o crea un objeto vacío
+                const prevPermisos = prev.permisos || {
+                    verViajes: false,
+                    verMantenimientos: false,
+                    verDocumentos: false,
+                    actualizarPerfil: false
+                };
+
+                return {
+                    ...prev,
+                    permisos: {
+                        ...prevPermisos,
+                        [permisoKey]: checked
+                    }
+                };
+            });
         } else {
             setFormData(prev => ({
                 ...prev,
@@ -242,27 +255,30 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
     // Validar y guardar datos
     const handleSave = () => {
         // Campos requeridos para todos los conductores
-        const camposRequeridos = [
-            'nombre', 
-            'apellido', 
-            'tipo_identificacion', 
-            'numero_identificacion', 
-            'telefono'
+
+        // Asegúrate de que camposRequeridos contenga solo claves válidas
+        const camposRequeridos: ConductorKey[] = [
+            'nombre',
+            'apellido',
+            'tipo_identificacion',
+            'numero_identificacion',
+            'telefono',
+            // Agrega otras claves según sea necesario
         ];
-        
+
         // Campos adicionales requeridos para conductores de planta
         if (esPlanta) {
             camposRequeridos.push(
-                'email', 
-                'password', 
-                'cargo', 
-                'fecha_ingreso', 
+                'email',
+                'password',
+                'cargo',
+                'fecha_ingreso',
                 'salario_base'
             );
         }
-        
+
         // Validar campos requeridos
-        const nuevosErrores: Record<string, boolean> = {};
+        const nuevosErrores: Record<ConductorKey, boolean> = {} as Record<ConductorKey, boolean>;
         camposRequeridos.forEach(campo => {
             if (campo === 'salario_base') {
                 nuevosErrores[campo] = !formData[campo] || formData[campo] === 0;
@@ -270,7 +286,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                 nuevosErrores[campo] = !formData[campo]?.toString().trim();
             }
         });
-        
+
         setErrores(nuevosErrores);
 
         // Si hay errores, no continuar
@@ -279,7 +295,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
         }
 
         // Enviar datos
-        onSave(formData);
+        onSave(formData as Conductor);
     };
 
     return (
@@ -343,12 +359,12 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                             label="Tipo de Identificación"
                                             placeholder="Seleccione tipo"
                                             name="tipo_identificacion"
-                                            value={formData.tipo_identificacion || "CC"}
+                                            defaultSelectedKeys={formData.tipo_identificacion ? [formData.tipo_identificacion] : []}
                                             onChange={handleChange}
                                             isRequired
                                         >
                                             {tiposIdentificacion.map(tipo => (
-                                                <SelectItem key={tipo.key} value={tipo.key}>
+                                                <SelectItem key={tipo.key} textValue={tipo.key}>
                                                     {tipo.label}
                                                 </SelectItem>
                                             ))}
@@ -439,9 +455,9 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                                     value={formData.genero || ""}
                                                     onChange={handleChange}
                                                 >
-                                                    <SelectItem key="masculino" value="Masculino">Masculino</SelectItem>
-                                                    <SelectItem key="femenino" value="Femenino">Femenino</SelectItem>
-                                                    <SelectItem key="otro" value="Otro">Otro</SelectItem>
+                                                    <SelectItem key="masculino" textValue="Masculino">Masculino</SelectItem>
+                                                    <SelectItem key="femenino" textValue="Femenino">Femenino</SelectItem>
+                                                    <SelectItem key="otro" textValue="Otro">Otro</SelectItem>
                                                 </Select>
 
                                                 <Input
@@ -508,7 +524,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                                     onChange={handleChange}
                                                 >
                                                     {tiposContrato.map(tipo => (
-                                                        <SelectItem key={tipo.key} value={tipo.key}>
+                                                        <SelectItem key={tipo.key} textValue={tipo.key}>
                                                             {tipo.label}
                                                         </SelectItem>
                                                     ))}
@@ -522,7 +538,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                                     onChange={handleChange}
                                                 >
                                                     {Object.entries(SedeTrabajo).map(([key, value]) => (
-                                                        <SelectItem key={key} value={value}>
+                                                        <SelectItem key={key} textValue={value}>
                                                             {value}
                                                         </SelectItem>
                                                     ))}
@@ -536,7 +552,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                                     onChange={handleChange}
                                                 >
                                                     {Object.entries(EstadoConductor).map(([key, value]) => (
-                                                        <SelectItem key={key} value={value}>
+                                                        <SelectItem key={key} textValue={value}>
                                                             {value}
                                                         </SelectItem>
                                                     ))}
@@ -561,7 +577,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                                     onChange={handleChange}
                                                 >
                                                     {listaEPS.map(eps => (
-                                                        <SelectItem key={eps} value={eps}>
+                                                        <SelectItem key={eps} textValue={eps}>
                                                             {eps}
                                                         </SelectItem>
                                                     ))}
@@ -575,7 +591,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                                     onChange={handleChange}
                                                 >
                                                     {listaFondosPension.map(fondo => (
-                                                        <SelectItem key={fondo} value={fondo}>
+                                                        <SelectItem key={fondo} textValue={fondo}>
                                                             {fondo}
                                                         </SelectItem>
                                                     ))}
@@ -589,7 +605,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                                     onChange={handleChange}
                                                 >
                                                     {listaARL.map(arl => (
-                                                        <SelectItem key={arl} value={arl}>
+                                                        <SelectItem key={arl} textValue={arl}>
                                                             {arl}
                                                         </SelectItem>
                                                     ))}
@@ -622,7 +638,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                                     onChange={handleChange}
                                                 >
                                                     {categoriasLicencia.map(cat => (
-                                                        <SelectItem key={cat.key} value={cat.key}>
+                                                        <SelectItem key={cat.key} textValue={cat.key}>
                                                             {cat.label}
                                                         </SelectItem>
                                                     ))}

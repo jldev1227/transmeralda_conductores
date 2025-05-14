@@ -38,7 +38,7 @@ interface ConductoresTableProps {
   currentPage: number;
   totalPages: number;
   totalCount: number;
-  abrirModalEditar: ()=>void
+  abrirModalEditar: (conductor : Conductor)=>void
   onPageChange: (page: number) => void;
 }
 
