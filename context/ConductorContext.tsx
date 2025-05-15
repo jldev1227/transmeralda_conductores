@@ -256,7 +256,7 @@ interface ConductorContextType {
   validationErrors: ValidationError[] | null;
 
   // Operaciones CRUD
-  fetchConductores: (page?: number) => Promise<void>;
+  fetchConductores: (paramsBusqueda: BusquedaParams) => Promise<void>;
   getConductor: (id: string) => Promise<Conductor | null>;
   crearConductor: (data: CrearConductorRequest) => Promise<Conductor | null>;
   actualizarConductor: (
@@ -358,6 +358,8 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Operaciones CRUD
   const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
+
+    console.log(paramsBusqueda)
     setLoading(true);
     clearError();
 
@@ -482,10 +484,20 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         data,
       );
 
-      console.log(response);
       if (response.data && response.data.success) {
+
+        const params: BusquedaParams = {
+          page: conductoresState.currentPage,
+          // Add other properties from conductoresState that match BusquedaParams
+          // For example:
+          // limit: conductoresState.limit,
+          // search: conductoresState.searchTerm,
+          // estado: conductoresState.selectedEstados,
+          // etc.
+        };
+
         // Actualizar la lista de conductores después de crear uno nuevo
-        fetchConductores(1);
+        fetchConductores(params);
 
         return response.data.data;
       } else {
@@ -523,8 +535,18 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           setCurrentConductor(conductorActualizado);
         }
 
+        const params: BusquedaParams = {
+          page: conductoresState.currentPage,
+          // Add other properties from conductoresState that match BusquedaParams
+          // For example:
+          // limit: conductoresState.limit,
+          // search: conductoresState.searchTerm,
+          // estado: conductoresState.selectedEstados,
+          // etc.
+        };
+
         // Actualizar la lista de conductores
-        fetchConductores(conductoresState.currentPage);
+        fetchConductores(params);
 
         return conductorActualizado;
       } else {
@@ -559,8 +581,18 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           setCurrentConductor(null);
         }
 
+        const params: BusquedaParams = {
+          page: conductoresState.currentPage,
+          // Add other properties from conductoresState that match BusquedaParams
+          // For example:
+          // limit: conductoresState.limit,
+          // search: conductoresState.searchTerm,
+          // estado: conductoresState.selectedEstados,
+          // etc.
+        };
+
         // Refrescar la lista después de eliminar
-        fetchConductores(conductoresState.currentPage);
+        fetchConductores(params);
 
         return true;
       } else {
@@ -594,18 +626,30 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
       ...prevState,
       currentPage: 1,
     }));
-    fetchConductores(1);
+
+    const params: BusquedaParams = {
+      page: conductoresState.currentPage,
+    };
+
+    fetchConductores(params);
   };
 
-  // Efectos
   // Efecto que se ejecuta cuando cambia la página actual
   useEffect(() => {
-    fetchConductores(conductoresState.currentPage);
+    const params: BusquedaParams = {
+      page: conductoresState.currentPage,
+    };
+
+    fetchConductores(params);
   }, [conductoresState.currentPage]);
 
   // Efecto de inicialización
   useEffect(() => {
-    fetchConductores(1);
+    const params: BusquedaParams = {
+      page: conductoresState.currentPage,
+    };
+
+    fetchConductores(params);
 
     // Establecer un tiempo máximo para la inicialización
     const timeoutId = setTimeout(() => {
@@ -652,7 +696,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
       socketService.on("disconnect", handleDisconnect);
 
       // Registrar manejadores de eventos de servicios
-      
+
       return () => {
         // Limpiar al desmontar
         socketService.off("connect");
@@ -673,6 +717,13 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     loading,
     error,
     validationErrors,
+
+    // Socket
+
+    // Propiedades para Socket.IO
+    socketConnected,
+    socketEventLogs,
+    clearSocketEventLogs,
 
     fetchConductores,
     getConductor,

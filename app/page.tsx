@@ -55,11 +55,19 @@ export default function GestionConductores() {
     cargarConductores();
   }, []);
 
-  // Función para cargar conductores con parámetros de búsqueda/filtros
-  const cargarConductores = async (page: number = 1) => {
+  /// Función para cargar conductores con parámetros de búsqueda/filtros
+  const cargarConductores = async (
+    page: number = 1,
+    searchTermParam?: string,
+    filtrosParam?: FilterOptions
+  ) => {
     setLoading(true);
 
     try {
+      // Usar parámetros proporcionados o valores de estado actuales
+      const currentSearchTerm = searchTermParam !== undefined ? searchTermParam : searchTerm;
+      const currentFiltros = filtrosParam !== undefined ? filtrosParam : filtros;
+
       // Construir parámetros de búsqueda
       const params: BusquedaParams = {
         page,
@@ -68,34 +76,61 @@ export default function GestionConductores() {
       };
 
       // Añadir término de búsqueda
-      if (searchTerm) {
-        params.search = searchTerm;
+      if (currentSearchTerm) {
+        params.search = currentSearchTerm;
       }
 
       // Añadir filtros
-      if (filtros.sedes.length > 0) {
-        params.sede_trabajo = filtros.sedes as any;
+      if (currentFiltros.sedes.length > 0) {
+        params.sede_trabajo = currentFiltros.sedes as any;
       }
 
-      if (filtros.tiposIdentificacion.length > 0) {
-        params.tipo_identificacion = filtros.tiposIdentificacion;
+      if (currentFiltros.tiposIdentificacion.length > 0) {
+        params.tipo_identificacion = currentFiltros.tiposIdentificacion;
       }
 
-      if (filtros.tiposContrato.length > 0) {
-        params.tipo_contrato = filtros.tiposContrato;
+      if (currentFiltros.tiposContrato.length > 0) {
+        params.tipo_contrato = currentFiltros.tiposContrato;
       }
 
-      if (filtros.estados.length > 0) {
-        params.estado = filtros.estados as any;
+      if (currentFiltros.estados.length > 0) {
+        params.estado = currentFiltros.estados as any;
       }
 
       // Realizar la búsqueda
       await fetchConductores(params);
+
+      // Actualizar los estados después de la búsqueda exitosa
+      if (searchTermParam !== undefined) setSearchTerm(searchTermParam);
+      if (filtrosParam !== undefined) setFiltros(filtrosParam);
+
     } catch (error) {
       console.error("Error al cargar conductores:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Manejar la búsqueda
+  const handleSearch = async (termino: string) => {
+    await cargarConductores(1, termino, undefined);
+  };
+
+  // Manejar los filtros
+  const handleFilter = async (nuevosFiltros: FilterOptions) => {
+    await cargarConductores(1, undefined, nuevosFiltros);
+  };
+
+  // Manejar reset de búsqueda y filtros
+  const handleReset = async () => {
+    const filtrosVacios = {
+      sedes: [],
+      tiposIdentificacion: [],
+      tiposContrato: [],
+      estados: [],
+    };
+
+    await cargarConductores(1, "", filtrosVacios);
   };
 
   // Manejar cambio de página
@@ -107,31 +142,6 @@ export default function GestionConductores() {
   const handleSortChange = (descriptor: SortDescriptor) => {
     setSortDescriptor(descriptor);
     cargarConductores(1); // Volver a la primera página con el nuevo ordenamiento
-  };
-
-  // Manejar la búsqueda
-  const handleSearch = async (termino: string) => {
-    setSearchTerm(termino);
-    await cargarConductores(1); // Volver a la primera página con la nueva búsqueda
-  };
-
-  // Manejar los filtros
-  const handleFilter = async (nuevosFiltros: FilterOptions) => {
-    setFiltros(nuevosFiltros);
-    await cargarConductores(1); // Volver a la primera página con los nuevos filtros
-  };
-
-  // Manejar reset de búsqueda y filtros
-  const handleReset = async () => {
-    setSearchTerm("");
-    setFiltros({
-      sedes: [],
-      tiposIdentificacion: [],
-      tiposContrato: [],
-      estados: [],
-    });
-
-    await cargarConductores(1); // Volver a la primera página sin filtros
   };
 
   // Manejar la selección de conductores

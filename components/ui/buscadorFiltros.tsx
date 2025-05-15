@@ -73,11 +73,15 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
   // Manejar cambio en el término de búsqueda
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+
+    console.log(e.target.value)
   };
 
   // Aplicar búsqueda al presionar Enter o el botón
   const aplicarBusqueda = () => {
     onSearch(searchTerm);
+
+    console.log("Se aplico la busqueda")
   };
 
   // Manejar tecla Enter en el campo de búsqueda
@@ -197,7 +201,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
             type="text"
             value={searchTerm}
             onChange={handleSearchChange}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
           />
         </div>
 
