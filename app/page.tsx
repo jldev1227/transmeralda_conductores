@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@heroui/button";
 import { PlusIcon } from "lucide-react";
+import { Alert } from "@heroui/alert";
 
 import {
   Conductor,
@@ -16,7 +17,6 @@ import ModalDetalleConductor from "@/components/ui/modalDetalle";
 import BuscadorFiltrosConductores, {
   FilterOptions,
 } from "@/components/ui/buscadorFiltros";
-import { Alert } from "@heroui/alert";
 
 export default function GestionConductores() {
   const {
@@ -59,14 +59,16 @@ export default function GestionConductores() {
   const cargarConductores = async (
     page: number = 1,
     searchTermParam?: string,
-    filtrosParam?: FilterOptions
+    filtrosParam?: FilterOptions,
   ) => {
     setLoading(true);
 
     try {
       // Usar parámetros proporcionados o valores de estado actuales
-      const currentSearchTerm = searchTermParam !== undefined ? searchTermParam : searchTerm;
-      const currentFiltros = filtrosParam !== undefined ? filtrosParam : filtros;
+      const currentSearchTerm =
+        searchTermParam !== undefined ? searchTermParam : searchTerm;
+      const currentFiltros =
+        filtrosParam !== undefined ? filtrosParam : filtros;
 
       // Construir parámetros de búsqueda
       const params: BusquedaParams = {
@@ -103,7 +105,6 @@ export default function GestionConductores() {
       // Actualizar los estados después de la búsqueda exitosa
       if (searchTermParam !== undefined) setSearchTerm(searchTermParam);
       if (filtrosParam !== undefined) setFiltros(filtrosParam);
-
     } catch (error) {
       console.error("Error al cargar conductores:", error);
     } finally {
@@ -182,11 +183,9 @@ export default function GestionConductores() {
 
   // Función para guardar conductor (nueva o editada)
   const guardarConductor = async (conductorData: Conductor) => {
-    console.log(conductorData)
     try {
       setLoading(true);
       if (conductorData.id) {
-        console.log("actualizando")
         // Editar conductor existente
         await actualizarConductor(conductorData.id, conductorData);
       } else {

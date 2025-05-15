@@ -271,12 +271,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
 
     // Campos adicionales requeridos para conductores de planta
     if (esPlanta) {
-      camposRequeridos.push(
-        "email",
-        "cargo",
-        "fecha_ingreso",
-        "salario_base",
-      );
+      camposRequeridos.push("email", "cargo", "fecha_ingreso", "salario_base");
     }
 
     // Validar campos requeridos
@@ -292,8 +287,6 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
         nuevosErrores[campo] = !formData[campo]?.toString().trim();
       }
     });
-
-    console.log(nuevosErrores)
 
     setErrores(nuevosErrores);
 

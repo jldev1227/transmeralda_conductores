@@ -1,5 +1,4 @@
 import React from "react";
-import { useRouter } from "next/navigation";
 import { useMediaQuery } from "react-responsive";
 import {
   Edit,
@@ -61,8 +60,6 @@ export default function ConductoresTable({
   abrirModalEditar,
   abrirModalDetalle,
 }: ConductoresTableProps) {
-  const router = useRouter();
-
   // Breakpoints responsivos
   const isDesktop = useMediaQuery({ minWidth: 1024 });
   const isTablet = useMediaQuery({ minWidth: 768, maxWidth: 1023 });

@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
+
+import { useConductor } from "@/context/ConductorContext";
 
 export type SortDescriptor = {
   column: string;
@@ -11,6 +13,15 @@ export interface Column {
   label: string;
   allowsSorting?: boolean;
   renderCell?: (item: any) => React.ReactNode;
+}
+
+interface RowAnimationState {
+  [key: string]: {
+    isNew: boolean;
+    isUpdated: boolean;
+    eventType: string; // Añadir el tipo de evento
+    timestamp: number;
+  };
 }
 
 interface CustomTableProps {
@@ -39,6 +50,10 @@ const CustomTable: React.FC<CustomTableProps> = ({
   className = "",
   onRowClick,
 }) => {
+  const { socketEventLogs } = useConductor();
+
+  const [rowAnimations, setRowAnimations] = useState<RowAnimationState>({});
+
   // Manejar cambio de ordenamiento
   const handleSort = (column: string) => {
     if (
@@ -56,6 +71,80 @@ const CustomTable: React.FC<CustomTableProps> = ({
 
     onSortChange({ column, direction });
   };
+
+  // Actualiza el useEffect donde procesas los eventos de socket
+  useEffect(() => {
+    if (!socketEventLogs || socketEventLogs.length === 0) return;
+
+    // Obtener el evento más reciente
+    const latestEvents = [...socketEventLogs]
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, 5); // Solo procesar los 5 eventos más recientes
+
+    const now = Date.now();
+    const newAnimations: RowAnimationState = { ...rowAnimations };
+
+    latestEvents.forEach((event) => {
+      // Obtener ID del conductor según el tipo de evento
+      let conductorId = "";
+
+      if (event.data.conductor) {
+        conductorId = event.data.conductor.id;
+      } else if (event.data.id) {
+        conductorId = event.data.id;
+      }
+
+      if (!conductorId) return;
+
+      if (event.eventName === "conductor:creado") {
+        newAnimations[conductorId] = {
+          isNew: true,
+          isUpdated: false,
+          eventType: event.eventName,
+          timestamp: now,
+        };
+      } else {
+        // Para cualquier otro evento, marcar como actualizado
+        newAnimations[conductorId] = {
+          isNew: false,
+          isUpdated: true,
+          eventType: event.eventName,
+          timestamp: now,
+        };
+      }
+
+      // Scroll al conductor si es nuevo
+      if (event.eventName === "conductor:creado") {
+        setTimeout(() => {
+          const row = document.getElementById(`conductor-row-${conductorId}`);
+
+          if (row) {
+            row.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 100);
+      }
+    });
+
+    setRowAnimations(newAnimations);
+
+    // Limpiar animaciones después de 5 segundos
+    const timer = setTimeout(() => {
+      setRowAnimations((prev) => {
+        const updated: RowAnimationState = {};
+
+        // Solo mantener animaciones que sean más recientes que 5 segundos
+        Object.entries(prev).forEach(([id, state]) => {
+          if (now - state.timestamp < 5000) {
+            updated[id] = state;
+          }
+        });
+
+        return updated;
+      });
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [socketEventLogs]);
 
   return (
     <div className={`overflow-x-auto ${className}`}>
@@ -105,24 +194,33 @@ const CustomTable: React.FC<CustomTableProps> = ({
               </td>
             </tr>
           ) : (
-            data.map((item, rowIndex) => (
-              <tr
-                key={rowIndex}
-                className={`hover:bg-gray-50 transition-colors cursor-pointer`}
-                onClick={() => onRowClick && onRowClick(item)}
-              >
-                {columns.map((column) => (
-                  <td
-                    key={`${rowIndex}-${column.key}`}
-                    className="px-6 py-4 whitespace-nowrap"
-                  >
-                    {column.renderCell
-                      ? column.renderCell(item)
-                      : item[column.key]}
-                  </td>
-                ))}
-              </tr>
-            ))
+            data.map((item, rowIndex) => {
+              const conductorId = item.id || "";
+              const animation = rowAnimations[conductorId];
+              const isNew = animation?.isNew || false;
+              const isUpdated = animation?.isUpdated || false;
+
+              return (
+                <tr
+                  key={rowIndex}
+                  className={`
+                    hover:bg-gray-50 transition-colors cursor-pointer
+                    ${isNew ? "animate-pulse bg-success-50 border-l-2 border-success-400" : ""}
+                    ${isUpdated ? "animate-pulse bg-primary-50 border-l-2 border-primary-400" : ""}
+                  `}
+                  id={`servicio-${item.id}`}
+                  onClick={() => onRowClick && onRowClick(item)}
+                >
+                  {columns.map((column) => (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {column.renderCell
+                        ? column.renderCell(item)
+                        : item[column.key]}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

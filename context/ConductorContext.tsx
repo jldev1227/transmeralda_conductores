@@ -1,14 +1,21 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { AxiosError, isAxiosError } from "axios";
+import { addToast } from "@heroui/toast";
+
+import { useAuth } from "./AuthContext";
 
 import { apiClient } from "@/config/apiClient";
 import LoadingPage from "@/components/ui/loadingPage";
 import { SortDescriptor } from "@/components/ui/customTable";
 import socketService from "@/services/socketService";
-import { useAuth } from "./AuthContext";
-import { addToast } from "@heroui/toast";
 
 // Enumeraciones
 export enum SedeTrabajo {
@@ -121,7 +128,7 @@ export interface BusquedaParams {
 }
 
 export interface ActualizarConductorRequest
-  extends Partial<CrearConductorRequest> { }
+  extends Partial<CrearConductorRequest> {}
 
 export interface ConductorAuthResult {
   conductor: Omit<Conductor, "password">;
@@ -280,7 +287,9 @@ interface ConductorContextType {
 }
 
 // Crear el contexto
-const ConductorContext = createContext<ConductorContextType | undefined>(undefined)
+const ConductorContext = createContext<ConductorContextType | undefined>(
+  undefined,
+);
 
 // Proveedor del contexto
 export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -483,7 +492,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
       );
 
       if (response.data && response.data.success) {
-
         const params: BusquedaParams = {
           page: conductoresState.currentPage,
         };
@@ -528,7 +536,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         const params: BusquedaParams = {
-          page: conductoresState.currentPage
+          page: conductoresState.currentPage,
         };
 
         // Actualizar la lista de conductores
@@ -568,7 +576,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         const params: BusquedaParams = {
-          page: conductoresState.currentPage
+          page: conductoresState.currentPage,
         };
 
         // Refrescar la lista después de eliminar
@@ -610,6 +618,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     const params: BusquedaParams = {
       page: conductoresState.currentPage,
     };
+
     fetchConductores(params);
   };
 
@@ -625,10 +634,8 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
   // Efecto de inicialización
   useEffect(() => {
     const params: BusquedaParams = {
-      page: conductoresState.currentPage
+      page: conductoresState.currentPage,
     };
-
-    console.log("aqui")
 
     fetchConductores(params);
 
@@ -681,8 +688,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
             timestamp: new Date(),
           },
         ]);
-
-        console.log(data)
 
         addToast({
           title: "Nuevo Conductor",
