@@ -244,7 +244,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
           {/* Dropdown para Sedes */}
           <Dropdown>
             <DropdownTrigger>
-              <Button color="primary" variant="flat" radius="sm">
+              <Button color="primary" radius="sm" variant="flat">
                 Sedes {filtros.sedes.size > 0 && `(${filtros.sedes.size})`}
               </Button>
             </DropdownTrigger>
@@ -265,7 +265,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
           {/* Dropdown para Tipos de Identificación */}
           <Dropdown>
             <DropdownTrigger>
-              <Button color="primary" variant="flat" radius="sm">
+              <Button color="primary" radius="sm" variant="flat">
                 Tipos ID{" "}
                 {filtros.tiposIdentificacion.size > 0 &&
                   `(${filtros.tiposIdentificacion.size})`}
@@ -288,7 +288,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
           {/* Dropdown para Tipos de Contrato */}
           <Dropdown>
             <DropdownTrigger>
-              <Button color="primary" variant="flat" radius="sm">
+              <Button color="primary" radius="sm" variant="flat">
                 Tipos Contrato{" "}
                 {filtros.tiposContrato.size > 0 &&
                   `(${filtros.tiposContrato.size})`}
@@ -311,7 +311,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
           {/* Dropdown para Estados */}
           <Dropdown>
             <DropdownTrigger>
-              <Button color="primary" variant="flat" radius="sm">
+              <Button color="primary" radius="sm" variant="flat">
                 Estados{" "}
                 {filtros.estados.size > 0 && `(${filtros.estados.size})`}
               </Button>
@@ -334,10 +334,10 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
           {contarFiltrosActivos() > 0 && (
             <Button
               color="danger"
+              radius="sm"
               startContent={<RefreshCw size={18} />}
               variant="flat"
               onPress={limpiarFiltros}
-              radius="sm"
             >
               Limpiar filtros ({contarFiltrosActivos()})
             </Button>

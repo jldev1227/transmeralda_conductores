@@ -40,6 +40,7 @@ export const formatCurrency = (
 
     return formatter.format(numericValue);
   } catch (error) {
+    console.error("Error al formatear el valor", error);
     // Fallback por si el navegador no soporta Intl
     const formatted = numericValue
       .toFixed(options.maximumFractionDigits)

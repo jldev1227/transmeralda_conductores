@@ -211,8 +211,11 @@ const CustomTable: React.FC<CustomTableProps> = ({
                   id={`servicio-${item.id}`}
                   onClick={() => onRowClick && onRowClick(item)}
                 >
-                  {columns.map((column) => (
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  {columns.map((column, columIndex) => (
+                    <td
+                      key={columIndex}
+                      className="px-6 py-4 whitespace-nowrap"
+                    >
                       {column.renderCell
                         ? column.renderCell(item)
                         : item[column.key]}

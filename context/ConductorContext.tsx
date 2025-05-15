@@ -128,7 +128,7 @@ export interface BusquedaParams {
 }
 
 export interface ActualizarConductorRequest
-  extends Partial<CrearConductorRequest> { }
+  extends Partial<CrearConductorRequest> {}
 
 export interface ConductorAuthResult {
   conductor: Omit<Conductor, "password">;
@@ -479,129 +479,150 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-const crearConductor = async (
-  data: CrearConductorRequest,
-): Promise<Conductor> => { // Cambiado el tipo de retorno para no permitir null
-  clearError();
-  
-  try {
-    const response = await apiClient.post<ApiResponse<Conductor>>(
-      "/api/conductores",
-      data,
-    );
+  const crearConductor = async (
+    data: CrearConductorRequest,
+  ): Promise<Conductor> => {
+    // Cambiado el tipo de retorno para no permitir null
+    clearError();
 
-    if (response.data && response.data.success) {
-      return response.data.data;
-    } else {
-      throw new Error(response.data.message || "Error al crear conductor");
-    }
-  } catch (err: any) {
-    // Definir un mensaje de error predeterminado
-    let errorTitle = "Error al crear conductor";
-    let errorDescription = "Ha ocurrido un error inesperado.";
-    
-    // Manejar errores específicos por código de estado
-    if (err.response) {
-      switch (err.response.status) {
-        case 400: // Bad Request
-          errorTitle = "Error en los datos enviados";
-          
-          // Verificar si tenemos detalles específicos del error en la respuesta
-          if (err.response.data && err.response.data.message) {
-            errorDescription = err.response.data.message;
-          }
-          
-          // Verificar si hay errores específicos en formato español (errores) 
-          if (err.response.data && err.response.data.errores && Array.isArray(err.response.data.errores)) {
-            // Mapeo de nombres de campos para mensajes más amigables
-            const fieldLabels: Record<string, string> = {
-              nombre: "Nombre",
-              apellido: "Apellido",
-              tipo_identificacion: "Tipo de identificación",
-              numero_identificacion: "Número de identificación",
-              email: "Correo electrónico",
-              telefono: "Teléfono",
-              password: "Contraseña",
-              // Añadir más campos según sea necesario
-            };
-            
-            // Mostrar cada error de validación como un toast separado
-            let errorShown = false;
-            err.response.data.errores.forEach((error: { campo: string, mensaje: string }) => {
-              errorShown = true;
-              const fieldLabel = fieldLabels[error.campo] || error.campo;
-              
-              // Personalizar mensajes para errores comunes
-              let customMessage = error.mensaje;
-              if (error.mensaje.includes("must be unique")) {
-                customMessage = `Este ${fieldLabel.toLowerCase()} ya está registrado en el sistema`;
-              }
-              
-              addToast({
-                title: `Error en ${fieldLabel}`,
-                description: customMessage,
-                color: "danger"
-              });
-            });
-            
-            // IMPORTANTE: Ya no hacemos return null aquí
-            // Solo actualizamos el mensaje de error general
-            if (errorShown) {
-              setError(errorDescription);
-              // Arrojamos un nuevo error en lugar de retornar null
-              throw new Error("Error de validación en los campos");
-            }
-          }
-          
-          // Verificar errores específicos comunes en el mensaje
-          if (errorDescription.includes("unique") || errorDescription.includes("duplicado")) {
-            // Error genérico de duplicación
-            errorTitle = "Datos duplicados";
-            errorDescription = "Algunos de los datos ingresados ya existen en el sistema.";
-            
-            // Intentar ser más específico basado en el mensaje completo
-            if (errorDescription.toLowerCase().includes("email") ||
-                errorDescription.toLowerCase().includes("correo")) {
-              errorTitle = "Correo electrónico duplicado";
-              errorDescription = "Ya existe un conductor con este correo electrónico.";
-            } else if (errorDescription.toLowerCase().includes("identificacion") ||
-                      errorDescription.toLowerCase().includes("identificación")) {
-              errorTitle = "Identificación duplicada";
-              errorDescription = "Ya existe un conductor con este número de identificación.";
-            }
-          }
-          break;
-          
-        // Los demás casos igual que antes...
+    try {
+      const response = await apiClient.post<ApiResponse<Conductor>>(
+        "/api/conductores",
+        data,
+      );
+
+      if (response.data && response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || "Error al crear conductor");
       }
-    } else if (err.request) {
-      // La solicitud fue hecha pero no se recibió respuesta
-      errorTitle = "Error de conexión";
-      errorDescription = "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
-    } else {
-      // Algo sucedió al configurar la solicitud que desencadenó un error
-      errorTitle = "Error en la solicitud";
-      errorDescription = err.message || "Ha ocurrido un error al procesar la solicitud.";
+    } catch (err: any) {
+      // Definir un mensaje de error predeterminado
+      let errorTitle = "Error al crear conductor";
+      let errorDescription = "Ha ocurrido un error inesperado.";
+
+      // Manejar errores específicos por código de estado
+      if (err.response) {
+        switch (err.response.status) {
+          case 400: // Bad Request
+            errorTitle = "Error en los datos enviados";
+
+            // Verificar si tenemos detalles específicos del error en la respuesta
+            if (err.response.data && err.response.data.message) {
+              errorDescription = err.response.data.message;
+            }
+
+            // Verificar si hay errores específicos en formato español (errores)
+            if (
+              err.response.data &&
+              err.response.data.errores &&
+              Array.isArray(err.response.data.errores)
+            ) {
+              // Mapeo de nombres de campos para mensajes más amigables
+              const fieldLabels: Record<string, string> = {
+                nombre: "Nombre",
+                apellido: "Apellido",
+                tipo_identificacion: "Tipo de identificación",
+                numero_identificacion: "Número de identificación",
+                email: "Correo electrónico",
+                telefono: "Teléfono",
+                password: "Contraseña",
+                // Añadir más campos según sea necesario
+              };
+
+              // Mostrar cada error de validación como un toast separado
+              let errorShown = false;
+
+              err.response.data.errores.forEach(
+                (error: { campo: string; mensaje: string }) => {
+                  errorShown = true;
+                  const fieldLabel = fieldLabels[error.campo] || error.campo;
+
+                  // Personalizar mensajes para errores comunes
+                  let customMessage = error.mensaje;
+
+                  if (error.mensaje.includes("must be unique")) {
+                    customMessage = `Este ${fieldLabel.toLowerCase()} ya está registrado en el sistema`;
+                  }
+
+                  addToast({
+                    title: `Error en ${fieldLabel}`,
+                    description: customMessage,
+                    color: "danger",
+                  });
+                },
+              );
+
+              // IMPORTANTE: Ya no hacemos return null aquí
+              // Solo actualizamos el mensaje de error general
+              if (errorShown) {
+                setError(errorDescription);
+                // Arrojamos un nuevo error en lugar de retornar null
+                throw new Error("Error de validación en los campos");
+              }
+            }
+
+            // Verificar errores específicos comunes en el mensaje
+            if (
+              errorDescription.includes("unique") ||
+              errorDescription.includes("duplicado")
+            ) {
+              // Error genérico de duplicación
+              errorTitle = "Datos duplicados";
+              errorDescription =
+                "Algunos de los datos ingresados ya existen en el sistema.";
+
+              // Intentar ser más específico basado en el mensaje completo
+              if (
+                errorDescription.toLowerCase().includes("email") ||
+                errorDescription.toLowerCase().includes("correo")
+              ) {
+                errorTitle = "Correo electrónico duplicado";
+                errorDescription =
+                  "Ya existe un conductor con este correo electrónico.";
+              } else if (
+                errorDescription.toLowerCase().includes("identificacion") ||
+                errorDescription.toLowerCase().includes("identificación")
+              ) {
+                errorTitle = "Identificación duplicada";
+                errorDescription =
+                  "Ya existe un conductor con este número de identificación.";
+              }
+            }
+            break;
+
+          // Los demás casos igual que antes...
+        }
+      } else if (err.request) {
+        // La solicitud fue hecha pero no se recibió respuesta
+        errorTitle = "Error de conexión";
+        errorDescription =
+          "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+      } else {
+        // Algo sucedió al configurar la solicitud que desencadenó un error
+        errorTitle = "Error en la solicitud";
+        errorDescription =
+          err.message || "Ha ocurrido un error al procesar la solicitud.";
+      }
+
+      // Guardar el mensaje de error para referencia en el componente
+      setError(errorDescription);
+
+      // Mostrar el toast con el mensaje de error
+      addToast({
+        title: errorTitle,
+        description: errorDescription,
+        color: "danger",
+      });
+
+      // Registrar el error en la consola para depuración
+      console.error("Error detallado:", err);
+
+      // Siempre lanzamos el error, nunca retornamos null
+      throw err;
     }
-    
-    // Guardar el mensaje de error para referencia en el componente
-    setError(errorDescription);
-    
-    // Mostrar el toast con el mensaje de error
-    addToast({
-      title: errorTitle,
-      description: errorDescription,
-      color: "danger"
-    });
-    
-    // Registrar el error en la consola para depuración
-    console.error("Error detallado:", err);
-    
-    // Siempre lanzamos el error, nunca retornamos null
-    throw err;
-  }
-  // Ya no necesitamos un bloque finally aquí, el setLoading lo manejamos en guardarConductor
-};
+    // Ya no necesitamos un bloque finally aquí, el setLoading lo manejamos en guardarConductor
+  };
   const actualizarConductor = async (
     id: string,
     data: ActualizarConductorRequest,

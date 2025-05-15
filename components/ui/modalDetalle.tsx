@@ -20,6 +20,7 @@ import {
   Edit,
   Download,
 } from "lucide-react";
+import Image from "next/image";
 
 import {
   Conductor,
@@ -92,7 +93,7 @@ const ModalDetalleConductor: React.FC<ModalDetalleConductorProps> = ({
                 <div className="flex flex-col items-center md:flex-row md:items-start border-b pb-6">
                   <div className="mb-4 md:mb-0 md:mr-6">
                     {conductor.fotoUrl ? (
-                      <img
+                      <Image
                         alt={`${conductor.nombre} ${conductor.apellido}`}
                         className="h-32 w-32 rounded-full object-cover border-4 border-emerald-100"
                         src={conductor.fotoUrl}

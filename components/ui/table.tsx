@@ -11,6 +11,7 @@ import {
   AlertCircle,
   XCircle,
 } from "lucide-react";
+import Image from "next/image";
 
 import { Conductor, EstadoConductor } from "@/context/ConductorContext";
 import CustomTable, {
@@ -113,7 +114,7 @@ export default function ConductoresTable({
       renderCell: (conductor: Conductor) => (
         <div className="flex items-center">
           {conductor.fotoUrl ? (
-            <img
+            <Image
               alt={`${conductor.nombre} ${conductor.apellido}`}
               className="h-10 w-10 rounded-full mr-3"
               src={conductor.fotoUrl}

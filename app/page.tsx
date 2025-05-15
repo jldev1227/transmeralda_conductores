@@ -247,7 +247,7 @@ export default function GestionConductores() {
         <div className="bg-blue-50 p-3 rounded-md text-blue-700 text-sm">
           Mostrando {conductoresState.data.length} resultado(s) de{" "}
           {conductoresState.count} conductor(es) total(es)
-          {searchTerm && <span> - Búsqueda: "{searchTerm}"</span>}
+          {searchTerm && <span> - Búsqueda: {searchTerm}</span>}
         </div>
       )}
 
