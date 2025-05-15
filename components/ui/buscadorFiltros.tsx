@@ -13,6 +13,7 @@ import { CheckboxGroup, Checkbox } from "@heroui/checkbox";
 import { Search, Filter, X, RefreshCw } from "lucide-react";
 
 import { SedeTrabajo, EstadoConductor } from "@/context/ConductorContext";
+import { SharedSelection } from "@heroui/system";
 
 // Tipos de identificación
 const tiposIdentificacion = [
@@ -123,35 +124,34 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
     );
   };
 
-  // Crear funciones manejadoras para cada tipo de filtro
-  const handleSedesChange = (keys: Set<string>) => {
+  const handleSedesChange = (keys: SharedSelection) => {
     setFiltros(prev => ({
       ...prev,
-      sedes: keys
+      sedes: keys as unknown as Set<string>
     }));
   };
 
-  const handleTiposIdentificacionChange = (keys: Set<string>) => {
+  const handleTiposIdentificacionChange = (keys: SharedSelection) => {
     setFiltros(prev => ({
       ...prev,
-      tiposIdentificacion: keys
+      tiposIdentificacion: keys as unknown as Set<string>
     }));
   };
 
-  const handleTiposContratoChange = (keys: Set<string>) => {
+  const handleTiposContratoChange = (keys: SharedSelection) => {
     setFiltros(prev => ({
       ...prev,
-      tiposContrato: keys
+      tiposContrato: keys as unknown as Set<string>
     }));
   };
 
-  const handleEstadosChange = (keys: Set<string>) => {
+  const handleEstadosChange = (keys: SharedSelection) => {
     setFiltros(prev => ({
       ...prev,
-      estados: keys
+      estados: keys as unknown as Set<string>
     }));
   };
-
+  
   // Renderizar tags de filtros seleccionados
   const renderFiltrosSeleccionados = () => {
     const todosLosFiltros = [
