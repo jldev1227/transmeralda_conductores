@@ -177,11 +177,11 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
     if (todosLosFiltros.length === 0) return null;
 
     return (
-      <div className="flex flex-wrap gap-2 mt-2">
+      <div className="flex flex-wrap gap-2 mt-5">
         {todosLosFiltros.map((filtro, index) => (
           <Chip
             key={`${filtro.tipo}-${index}`}
-            color="secondary"
+            color="primary"
             variant="flat"
             onClose={() => {
               const nuevosFiltros = { ...filtros };
@@ -234,8 +234,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
         {/* Botones de acción */}
         <div className="flex flex-wrap gap-2">
           <Button
-            className="w-full md:w-auto"
-            color="primary"
+            className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
             variant="solid"
             onPress={aplicarBusqueda}
           >
@@ -245,7 +244,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
           {/* Dropdown para Sedes */}
           <Dropdown>
             <DropdownTrigger>
-              <Button color="secondary" variant="flat">
+              <Button color="primary" variant="flat" radius="sm">
                 Sedes {filtros.sedes.size > 0 && `(${filtros.sedes.size})`}
               </Button>
             </DropdownTrigger>
@@ -266,7 +265,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
           {/* Dropdown para Tipos de Identificación */}
           <Dropdown>
             <DropdownTrigger>
-              <Button color="secondary" variant="flat">
+              <Button color="primary" variant="flat" radius="sm">
                 Tipos ID{" "}
                 {filtros.tiposIdentificacion.size > 0 &&
                   `(${filtros.tiposIdentificacion.size})`}
@@ -289,7 +288,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
           {/* Dropdown para Tipos de Contrato */}
           <Dropdown>
             <DropdownTrigger>
-              <Button color="secondary" variant="flat">
+              <Button color="primary" variant="flat" radius="sm">
                 Tipos Contrato{" "}
                 {filtros.tiposContrato.size > 0 &&
                   `(${filtros.tiposContrato.size})`}
@@ -312,7 +311,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
           {/* Dropdown para Estados */}
           <Dropdown>
             <DropdownTrigger>
-              <Button color="secondary" variant="flat">
+              <Button color="primary" variant="flat" radius="sm">
                 Estados{" "}
                 {filtros.estados.size > 0 && `(${filtros.estados.size})`}
               </Button>
@@ -338,6 +337,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
               startContent={<RefreshCw size={18} />}
               variant="flat"
               onPress={limpiarFiltros}
+              radius="sm"
             >
               Limpiar filtros ({contarFiltrosActivos()})
             </Button>
