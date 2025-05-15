@@ -1,7 +1,7 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Gestion de Conductores",
+  name: "Gestión de Conductores",
   description: "Make beautiful websites regardless of your design experience.",
   navItems: [
     {
