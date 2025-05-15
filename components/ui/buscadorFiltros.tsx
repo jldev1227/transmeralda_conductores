@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Input } from "@heroui/input";
-import { Divider } from "@heroui/divider";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import {
@@ -43,7 +42,15 @@ export interface FilterOptions {
   sedes: string[];
   tiposIdentificacion: string[];
   tiposContrato: string[];
-  estados: EstadoConductor[];
+  estados: string[]; // Cambiado a string[] para consistencia
+}
+
+// Definir tipos para los Sets
+interface FilterSets {
+  sedes: Set<string>;
+  tiposIdentificacion: Set<string>;
+  tiposContrato: Set<string>;
+  estados: Set<string>;
 }
 
 const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
@@ -54,34 +61,36 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
   // Estado para el término de búsqueda
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // Estado para los filtros seleccionados
-  const [filtros, setFiltros] = useState<FilterOptions>({
-    sedes: [],
-    tiposIdentificacion: [],
-    tiposContrato: [],
-    estados: [],
+  // Estado para los filtros como Sets
+  const [filtros, setFiltros] = useState<FilterSets>({
+    sedes: new Set([]),
+    tiposIdentificacion: new Set([]),
+    tiposContrato: new Set([]),
+    estados: new Set([])
   });
-
-  // Estado para mostrar/ocultar los filtros
-  const [mostrarFiltros, setMostrarFiltros] = useState<boolean>(false);
 
   // Efecto para aplicar filtros cuando cambian
   useEffect(() => {
-    onFilter(filtros);
+    // Convertir los Sets a arrays para pasarlos a onFilter
+    const filtrosArray: FilterOptions = {
+      sedes: Array.from(filtros.sedes),
+      tiposIdentificacion: Array.from(filtros.tiposIdentificacion),
+      tiposContrato: Array.from(filtros.tiposContrato),
+      estados: Array.from(filtros.estados)
+    };
+
+    onFilter(filtrosArray);
   }, [filtros]);
 
   // Manejar cambio en el término de búsqueda
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-
-    console.log(e.target.value)
   };
 
   // Aplicar búsqueda al presionar Enter o el botón
   const aplicarBusqueda = () => {
     onSearch(searchTerm);
-
-    console.log("Se aplico la busqueda")
+    console.log("Se aplicó la búsqueda");
   };
 
   // Manejar tecla Enter en el campo de búsqueda
@@ -91,55 +100,77 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
     }
   };
 
-  // Manejar cambios en los filtros
-  const handleFiltroChange = (tipo: keyof FilterOptions, valores: string[]) => {
-    setFiltros((prev) => ({
-      ...prev,
-      [tipo]: valores,
-    }));
-  };
-
-  // Función para borrar todos los filtros
+  // Función para limpiar filtros
   const limpiarFiltros = () => {
     setSearchTerm("");
     setFiltros({
-      sedes: [],
-      tiposIdentificacion: [],
-      tiposContrato: [],
-      estados: [],
+      sedes: new Set([]),
+      tiposIdentificacion: new Set([]),
+      tiposContrato: new Set([]),
+      estados: new Set([])
     });
+    onSearch("");
     onReset();
   };
 
   // Contar filtros activos
   const contarFiltrosActivos = () => {
     return (
-      filtros.sedes.length +
-      filtros.tiposIdentificacion.length +
-      filtros.tiposContrato.length +
-      filtros.estados.length
+      filtros.sedes.size +
+      filtros.tiposIdentificacion.size +
+      filtros.tiposContrato.size +
+      filtros.estados.size
     );
+  };
+
+  // Crear funciones manejadoras para cada tipo de filtro
+  const handleSedesChange = (keys: Set<string>) => {
+    setFiltros(prev => ({
+      ...prev,
+      sedes: keys
+    }));
+  };
+
+  const handleTiposIdentificacionChange = (keys: Set<string>) => {
+    setFiltros(prev => ({
+      ...prev,
+      tiposIdentificacion: keys
+    }));
+  };
+
+  const handleTiposContratoChange = (keys: Set<string>) => {
+    setFiltros(prev => ({
+      ...prev,
+      tiposContrato: keys
+    }));
+  };
+
+  const handleEstadosChange = (keys: Set<string>) => {
+    setFiltros(prev => ({
+      ...prev,
+      estados: keys
+    }));
   };
 
   // Renderizar tags de filtros seleccionados
   const renderFiltrosSeleccionados = () => {
     const todosLosFiltros = [
-      ...filtros.sedes.map((sede) => ({
+      ...Array.from(filtros.sedes).map((sede) => ({
         tipo: "sedes",
         valor: sede,
         label: `Sede: ${sede}`,
       })),
-      ...filtros.tiposIdentificacion.map((tipo) => ({
+      ...Array.from(filtros.tiposIdentificacion).map((tipo) => ({
         tipo: "tiposIdentificacion",
         valor: tipo,
         label: `ID: ${tiposIdentificacion.find((t) => t.key === tipo)?.label || tipo}`,
       })),
-      ...filtros.tiposContrato.map((contrato) => ({
+      ...Array.from(filtros.tiposContrato).map((contrato) => ({
         tipo: "tiposContrato",
         valor: contrato,
         label: `Contrato: ${tiposContrato.find((t) => t.key === contrato)?.label || contrato}`,
       })),
-      ...filtros.estados.map((estado) => ({
+      ...Array.from(filtros.estados).map((estado) => ({
         tipo: "estados",
         valor: estado,
         label: `Estado: ${estado}`,
@@ -157,22 +188,17 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
             variant="flat"
             onClose={() => {
               const nuevosFiltros = { ...filtros };
-
-              (nuevosFiltros[filtro.tipo as keyof FilterOptions] as string[]) =
-                (
-                  nuevosFiltros[filtro.tipo as keyof FilterOptions] as string[]
-                ).filter((val) => val !== filtro.valor);
-              setFiltros(nuevosFiltros);
+              const newSet = new Set(nuevosFiltros[filtro.tipo as keyof FilterSets]);
+              newSet.delete(filtro.valor);
+              setFiltros({
+                ...nuevosFiltros,
+                [filtro.tipo]: newSet
+              });
             }}
           >
             {filtro.label}
           </Chip>
         ))}
-        {todosLosFiltros.length > 0 && (
-          <Chip color="danger" variant="flat" onClose={limpiarFiltros}>
-            Limpiar todos
-          </Chip>
-        )}
       </div>
     );
   };
@@ -206,7 +232,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
         </div>
 
         {/* Botones de acción */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             className="w-full md:w-auto"
             color="primary"
@@ -216,100 +242,115 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
             Buscar
           </Button>
 
+          {/* Dropdown para Sedes */}
           <Dropdown>
             <DropdownTrigger>
               <Button
-                className="w-full md:w-auto"
                 color="secondary"
-                endContent={
-                  contarFiltrosActivos() > 0 ? (
-                    <div className="rounded-full bg-emerald-500 text-white text-xs h-5 w-5 flex items-center justify-center">
-                      {contarFiltrosActivos()}
-                    </div>
-                  ) : null
-                }
-                startContent={<Filter size={18} />}
                 variant="flat"
               >
-                Filtros
+                Sedes {filtros.sedes.size > 0 && `(${filtros.sedes.size})`}
               </Button>
             </DropdownTrigger>
-            <DropdownMenu aria-label="Filtros de conductores" className="w-56">
-              <DropdownSection showDivider title="Sedes">
-                <CheckboxGroup
-                  value={filtros.sedes}
-                  onValueChange={(value) =>
-                    handleFiltroChange("sedes", value as string[])
-                  }
-                >
-                  {Object.values(SedeTrabajo).map((sede) => (
-                    <Checkbox key={sede} value={sede}>
-                      {sede}
-                    </Checkbox>
-                  ))}
-                </CheckboxGroup>
-              </DropdownSection>
-
-              <DropdownSection showDivider title="Tipo de Identificación">
-                <CheckboxGroup
-                  value={filtros.tiposIdentificacion}
-                  onValueChange={(value) =>
-                    handleFiltroChange("tiposIdentificacion", value as string[])
-                  }
-                >
-                  {tiposIdentificacion.map((tipo) => (
-                    <Checkbox key={tipo.key} value={tipo.key}>
-                      {tipo.label}
-                    </Checkbox>
-                  ))}
-                </CheckboxGroup>
-              </DropdownSection>
-
-              <DropdownSection showDivider title="Tipo de Contrato">
-                <CheckboxGroup
-                  value={filtros.tiposContrato}
-                  onValueChange={(value) =>
-                    handleFiltroChange("tiposContrato", value as string[])
-                  }
-                >
-                  {tiposContrato.map((tipo) => (
-                    <Checkbox key={tipo.key} value={tipo.key}>
-                      {tipo.label}
-                    </Checkbox>
-                  ))}
-                </CheckboxGroup>
-              </DropdownSection>
-
-              <DropdownSection title="Estado">
-                <CheckboxGroup
-                  value={filtros.estados}
-                  onValueChange={(value) =>
-                    handleFiltroChange("estados", value as string[])
-                  }
-                >
-                  {Object.values(EstadoConductor).map((estado) => (
-                    <Checkbox key={estado} value={estado}>
-                      {estado}
-                    </Checkbox>
-                  ))}
-                </CheckboxGroup>
-              </DropdownSection>
-
-              <Divider className="my-2" />
-              <DropdownItem
-                key="reset-filters"
-                className="text-danger"
-                startContent={<RefreshCw size={18} />}
-                onPress={limpiarFiltros}
-              >
-                Limpiar filtros
-              </DropdownItem>
+            <DropdownMenu
+              disallowEmptySelection
+              aria-label="Sedes de trabajo"
+              closeOnSelect={false}
+              selectedKeys={filtros.sedes}
+              selectionMode="multiple"
+              onSelectionChange={handleSedesChange}
+            >
+              {Object.values(SedeTrabajo).map((sede) => (
+                <DropdownItem key={sede}>{sede}</DropdownItem>
+              ))}
             </DropdownMenu>
           </Dropdown>
+
+          {/* Dropdown para Tipos de Identificación */}
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                color="secondary"
+                variant="flat"
+              >
+                Tipos ID {filtros.tiposIdentificacion.size > 0 && `(${filtros.tiposIdentificacion.size})`}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              disallowEmptySelection
+              aria-label="Tipos de identificación"
+              closeOnSelect={false}
+              selectedKeys={filtros.tiposIdentificacion}
+              selectionMode="multiple"
+              onSelectionChange={handleTiposIdentificacionChange}
+            >
+              {tiposIdentificacion.map((tipo) => (
+                <DropdownItem key={tipo.key}>{tipo.label}</DropdownItem>
+              ))}
+            </DropdownMenu>
+          </Dropdown>
+
+          {/* Dropdown para Tipos de Contrato */}
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                color="secondary"
+                variant="flat"
+              >
+                Tipos Contrato {filtros.tiposContrato.size > 0 && `(${filtros.tiposContrato.size})`}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              disallowEmptySelection
+              aria-label="Tipos de contrato"
+              closeOnSelect={false}
+              selectedKeys={filtros.tiposContrato}
+              selectionMode="multiple"
+              onSelectionChange={handleTiposContratoChange}
+            >
+              {tiposContrato.map((tipo) => (
+                <DropdownItem key={tipo.key}>{tipo.label}</DropdownItem>
+              ))}
+            </DropdownMenu>
+          </Dropdown>
+
+          {/* Dropdown para Estados */}
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                color="secondary"
+                variant="flat"
+              >
+                Estados {filtros.estados.size > 0 && `(${filtros.estados.size})`}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              disallowEmptySelection
+              aria-label="Estados"
+              closeOnSelect={false}
+              selectedKeys={filtros.estados}
+              selectionMode="multiple"
+              onSelectionChange={handleEstadosChange}
+            >
+              {Object.values(EstadoConductor).map((estado) => (
+                <DropdownItem key={estado}>{estado}</DropdownItem>
+              ))}
+            </DropdownMenu>
+          </Dropdown>
+
+          {/* Botón para limpiar todos los filtros */}
+          {contarFiltrosActivos() > 0 && (
+            <Button
+              color="danger"
+              variant="flat"
+              startContent={<RefreshCw size={18} />}
+              onPress={limpiarFiltros}
+            >
+              Limpiar filtros ({contarFiltrosActivos()})
+            </Button>
+          )}
         </div>
       </div>
-
-      {/* Mostrar filtros activos */}
       {renderFiltrosSeleccionados()}
     </div>
   );

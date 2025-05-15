@@ -358,8 +358,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Operaciones CRUD
   const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
-
-    console.log(paramsBusqueda)
     setLoading(true);
     clearError();
 
@@ -488,12 +486,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
 
         const params: BusquedaParams = {
           page: conductoresState.currentPage,
-          // Add other properties from conductoresState that match BusquedaParams
-          // For example:
-          // limit: conductoresState.limit,
-          // search: conductoresState.searchTerm,
-          // estado: conductoresState.selectedEstados,
-          // etc.
         };
 
         // Actualizar la lista de conductores después de crear uno nuevo
@@ -536,13 +528,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         const params: BusquedaParams = {
-          page: conductoresState.currentPage,
-          // Add other properties from conductoresState that match BusquedaParams
-          // For example:
-          // limit: conductoresState.limit,
-          // search: conductoresState.searchTerm,
-          // estado: conductoresState.selectedEstados,
-          // etc.
+          page: conductoresState.currentPage
         };
 
         // Actualizar la lista de conductores
@@ -582,13 +568,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         const params: BusquedaParams = {
-          page: conductoresState.currentPage,
-          // Add other properties from conductoresState that match BusquedaParams
-          // For example:
-          // limit: conductoresState.limit,
-          // search: conductoresState.searchTerm,
-          // estado: conductoresState.selectedEstados,
-          // etc.
+          page: conductoresState.currentPage
         };
 
         // Refrescar la lista después de eliminar
@@ -630,7 +610,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     const params: BusquedaParams = {
       page: conductoresState.currentPage,
     };
-
     fetchConductores(params);
   };
 
@@ -646,8 +625,10 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
   // Efecto de inicialización
   useEffect(() => {
     const params: BusquedaParams = {
-      page: conductoresState.currentPage,
+      page: conductoresState.currentPage
     };
+
+    console.log("aqui")
 
     fetchConductores(params);
 
@@ -691,16 +672,58 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         });
       };
 
+      const handleConductorCreado = (data: Conductor) => {
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "conductor:creado",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        console.log(data)
+
+        addToast({
+          title: "Nuevo Conductor",
+          description: `Se ha creado un nuevo conductor: ${data.nombre} ${data.apellido}`,
+          color: "success",
+        });
+      };
+
+      const handleConductorActualizado = (data: Conductor) => {
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "conductor:actualizado",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        addToast({
+          title: "Conductor Actualizado",
+          description: `Se ha actualizado la información del conductor: ${data.nombre} ${data.apellido}`,
+          color: "primary",
+        });
+      };
+
       // Registrar manejadores de eventos de conexión
       socketService.on("connect", handleConnect);
       socketService.on("disconnect", handleDisconnect);
 
-      // Registrar manejadores de eventos de servicios
+      // Registrar manejadores de eventos de conductores
+      socketService.on("conductor:creado", handleConductorCreado);
+      socketService.on("conductor:actualizado", handleConductorActualizado);
 
       return () => {
         // Limpiar al desmontar
         socketService.off("connect");
         socketService.off("disconnect");
+
+        // Limpiar manejadores de eventos de conductores
+        socketService.off("conductor:creado");
+        socketService.off("conductor:actualizado");
       };
     }
   }, [user?.id]);

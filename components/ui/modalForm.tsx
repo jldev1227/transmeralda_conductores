@@ -273,7 +273,6 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
     if (esPlanta) {
       camposRequeridos.push(
         "email",
-        "password",
         "cargo",
         "fecha_ingreso",
         "salario_base",
@@ -293,6 +292,8 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
         nuevosErrores[campo] = !formData[campo]?.toString().trim();
       }
     });
+
+    console.log(nuevosErrores)
 
     setErrores(nuevosErrores);
 

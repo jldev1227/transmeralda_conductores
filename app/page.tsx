@@ -182,9 +182,11 @@ export default function GestionConductores() {
 
   // Función para guardar conductor (nueva o editada)
   const guardarConductor = async (conductorData: Conductor) => {
+    console.log(conductorData)
     try {
       setLoading(true);
       if (conductorData.id) {
+        console.log("actualizando")
         // Editar conductor existente
         await actualizarConductor(conductorData.id, conductorData);
       } else {
