@@ -623,6 +623,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     // Ya no necesitamos un bloque finally aquí, el setLoading lo manejamos en guardarConductor
   };
+  
   const actualizarConductor = async (
     id: string,
     data: ActualizarConductorRequest,
@@ -854,8 +855,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     loading,
     error,
     validationErrors,
-
-    // Socket
 
     // Propiedades para Socket.IO
     socketConnected,
