@@ -5,7 +5,7 @@ import { useConductor } from "@/context/ConductorContext";
 
 export type SortDescriptor = {
   column: string;
-  direction: "ascending" | "descending";
+  direction: "ASC" | "DESC";
 };
 
 export interface Column {
@@ -62,13 +62,14 @@ const CustomTable: React.FC<CustomTableProps> = ({
     )
       return;
 
-    let direction: "ascending" | "descending" = "ascending";
+    let direction: "DESC" | "ASC" = "ASC";
 
     if (sortDescriptor?.column === column) {
       direction =
-        sortDescriptor.direction === "ascending" ? "descending" : "ascending";
+        sortDescriptor.direction === "ASC" ? "DESC" : "ASC";
     }
 
+    console.log(direction, column)
     onSortChange({ column, direction });
   };
 
@@ -164,7 +165,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
                   <span>{column.label}</span>
                   {column.allowsSorting &&
                     sortDescriptor?.column === column.key &&
-                    (sortDescriptor.direction === "ascending" ? (
+                    (sortDescriptor.direction === "DESC" ? (
                       <ArrowUpIcon className="h-4 w-4 ml-2" />
                     ) : (
                       <ArrowDownIcon className="h-4 w-4 ml-2" />

@@ -22,9 +22,9 @@ import CustomTable, {
 // Definimos todas las posibles columnas como un tipo
 export type ConductorColumnKey =
   | "conductor"
-  | "identificacion"
-  | "contacto"
-  | "sede"
+  | "numero_identificacion"
+  | "telefono"
+  | "sede_trabajo"
   | "estado"
   | "acciones";
 
@@ -138,8 +138,8 @@ export default function ConductoresTable({
         </div>
       ),
     },
-    identificacion: {
-      key: "identificacion",
+    numero_identificacion: {
+      key: "numero_identificacion",
       label: "IDENTIFICACIÓN",
       allowsSorting: true,
       renderCell: (conductor: Conductor) => (
@@ -153,25 +153,25 @@ export default function ConductoresTable({
         </div>
       ),
     },
-    contacto: {
-      key: "contacto",
+    telefono: {
+      key: "telefono",
       label: "CONTACTO",
       allowsSorting: true,
       renderCell: (conductor: Conductor) => (
         <div>
           <div className="text-sm text-gray-900 flex items-center">
             <Phone className="h-4 w-4 mr-1 text-gray-500" />
-            {conductor.telefono}
+            {conductor.telefono || "No hay teléfono"}
           </div>
-          <div className="text-sm text-gray-500 flex items-center truncate max-w-[150px]">
+          <div className="text-sm text-gray-500 flex items-center truncate">
             <Mail className="h-4 w-4 mr-1 text-gray-500" />
-            {conductor.email}
+            {conductor.email || "No hay email"}
           </div>
         </div>
       ),
     },
-    sede: {
-      key: "sede",
+    sede_trabajo: {
+      key: "sede_trabajo",
       label: "SEDE",
       allowsSorting: true,
       renderCell: (conductor: Conductor) => (
@@ -253,15 +253,15 @@ export default function ConductoresTable({
       // Mostrar todas las columnas en desktop
       displayColumns = [
         "conductor",
-        "identificacion",
-        "contacto",
-        "sede",
+        "numero_identificacion",
+        "telefono",
+        "sede_trabajo",
         "estado",
         "acciones",
       ];
     } else if (isTablet) {
       // Mostrar menos columnas en tablet
-      displayColumns = ["conductor", "contacto", "sede", "estado", "acciones"];
+      displayColumns = ["conductor", "telefono", "sede_trabajo", "estado", "acciones"];
     } else {
       // Mostrar mínimo de columnas en móvil
       displayColumns = ["conductor", "estado", "acciones"];

@@ -318,8 +318,8 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
   const { user } = useAuth();
 
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: "nombre",
-    direction: "ascending",
+    column: "conductor",
+    direction: "ASC",
   });
 
   // Función para manejar errores de Axios

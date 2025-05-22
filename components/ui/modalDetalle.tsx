@@ -381,28 +381,12 @@ const ModalDetalleConductor: React.FC<ModalDetalleConductorProps> = ({
             <ModalFooter>
               <div className="flex space-x-2">
                 <Button
-                  color="primary"
+                  color="danger"
                   radius="sm"
                   variant="light"
                   onPress={onClose}
                 >
                   Cerrar
-                </Button>
-
-                {/* Botón para descargar información (opcional) */}
-                <Button
-                  color="secondary"
-                  radius="sm"
-                  startContent={<Download className="h-4 w-4" />}
-                  variant="flat"
-                  onPress={() => {
-                    // Lógica para descargar información del conductor (PDF, CSV, etc.)
-                    alert(
-                      "Funcionalidad para descargar información del conductor",
-                    );
-                  }}
-                >
-                  Descargar Info
                 </Button>
 
                 {/* Botón de editar (opcional) */}

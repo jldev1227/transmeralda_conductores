@@ -7,7 +7,7 @@ import { Alert } from "@heroui/alert";
 
 import {
   Conductor,
-  useConductor,
+  useConductor, 
   BusquedaParams,
 } from "@/context/ConductorContext";
 import ConductoresTable from "@/components/ui/table";
@@ -27,8 +27,8 @@ export default function GestionConductores() {
   } = useConductor();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: "nombre",
-    direction: "ascending",
+    column: "conductor",
+    direction: "ASC",
   });
 
   // Estados para búsqueda y filtros
@@ -74,7 +74,7 @@ export default function GestionConductores() {
       const params: BusquedaParams = {
         page,
         sort: sortDescriptor.column,
-        order: sortDescriptor.direction === "ascending" ? "ASC" : "DESC",
+        order: sortDescriptor.direction === "ASC" ? "DESC" : "ASC",
       };
 
       // Añadir término de búsqueda
