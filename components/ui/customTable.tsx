@@ -206,8 +206,8 @@ const CustomTable: React.FC<CustomTableProps> = ({
                   key={rowIndex}
                   className={`
                     hover:bg-gray-50 transition-colors cursor-pointer
-                    ${isNew ? "animate-pulse bg-success-50 border-l-2 border-success-400" : ""}
-                    ${isUpdated ? "animate-pulse bg-primary-50 border-l-2 border-primary-400" : ""}
+                    ${isNew ? "animate-pulse bg-success-50" : ""}
+                    ${isUpdated ? "animate-pulse bg-primary-50" : ""}
                   `}
                   id={`servicio-${item.id}`}
                   onClick={() => onRowClick && onRowClick(item)}

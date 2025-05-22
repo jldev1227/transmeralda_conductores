@@ -53,56 +53,19 @@ export const formatCurrency = (
 /**
  * Formatea una fecha en formato legible (DD/MM/YYYY)
  *
- * @param date - Fecha a formatear (string, Date, o timestamp)
- * @param format - Formato deseado ('short', 'medium', 'long')
+ * @param dateString - Fecha a formatear (string, Date, o timestamp)
  * @returns String con la fecha formateada
  */
-export const formatDate = (
-  date: string | Date | number | null | undefined,
-  format: "short" | "medium" | "long" = "short",
-): string => {
-  if (!date) return "N/A";
-
-  try {
-    const dateObj =
-      typeof date === "string" || typeof date === "number"
-        ? new Date(date)
-        : date;
-
-    // Verificar si la fecha es válida
-    if (isNaN(dateObj.getTime())) {
-      return "Fecha inválida";
-    }
-
-    const options: Intl.DateTimeFormatOptions = {
-      timeZone: "America/Bogota",
-    };
-
-    switch (format) {
-      case "short":
-        options.day = "2-digit";
-        options.month = "2-digit";
-        options.year = "numeric";
-        break;
-      case "medium":
-        options.day = "2-digit";
-        options.month = "short";
-        options.year = "numeric";
-        break;
-      case "long":
-        options.day = "2-digit";
-        options.month = "long";
-        options.year = "numeric";
-        options.weekday = "long";
-        break;
-    }
-
-    return new Intl.DateTimeFormat("es-CO", options).format(dateObj);
-  } catch (error) {
-    console.error("Error al formatear fecha:", error);
-
-    return "Error de formato";
-  }
+export const formatDate = (dateString?: string) => {
+  if (!dateString) return "Nunca";
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('es-CO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
 };
 
 /**

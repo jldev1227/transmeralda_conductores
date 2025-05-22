@@ -112,7 +112,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
   titulo = "Registrar Nuevo Conductor",
 }) => {
   // Estado para determinar si el conductor es de planta
-  const [esPlanta, setEsPlanta] = useState<boolean>(true);
+  const [esPlanta, setEsPlanta] = useState<boolean>(false);
 
   // Estado para almacenar los datos del formulario
   const [formData, setFormData] = useState<Partial<Conductor>>({
@@ -185,7 +185,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
         actualizarPerfil: true,
       },
     });
-    setEsPlanta(true);
+    setEsPlanta(false);
     setErrores({
       nombre: false,
       apellido: false,
