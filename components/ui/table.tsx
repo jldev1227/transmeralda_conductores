@@ -261,7 +261,13 @@ export default function ConductoresTable({
       ];
     } else if (isTablet) {
       // Mostrar menos columnas en tablet
-      displayColumns = ["conductor", "telefono", "sede_trabajo", "estado", "acciones"];
+      displayColumns = [
+        "conductor",
+        "telefono",
+        "sede_trabajo",
+        "estado",
+        "acciones",
+      ];
     } else {
       // Mostrar mínimo de columnas en móvil
       displayColumns = ["conductor", "estado", "acciones"];

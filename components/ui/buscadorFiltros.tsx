@@ -38,10 +38,10 @@ interface BuscadorFiltrosConductoresProps {
 }
 
 export interface FilterOptions {
-  sedes: string[];
-  tiposIdentificacion: string[];
-  tiposContrato: string[];
-  estados: string[]; // Cambiado a string[] para consistencia
+  sedes: Set<string>;
+  tiposIdentificacion: Set<string>;
+  tiposContrato: Set<string>;
+  estados: Set<string>;
 }
 
 // Definir tipos para los Sets

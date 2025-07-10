@@ -66,12 +66,7 @@ export const LogoutButton = ({ children }: { children?: ReactNode }) => {
   const { logout } = useLogout();
 
   return (
-    <Button
-      color="danger"
-      radius="sm"
-      variant="flat"
-      onPress={logout}
-    >
+    <Button color="danger" radius="sm" variant="flat" onPress={logout}>
       <svg
         className="size-5"
         fill="none"

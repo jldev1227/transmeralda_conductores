@@ -7,37 +7,73 @@ import {
   ModalFooter,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { Input, Textarea } from "@heroui/input";
+import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
-import { Switch } from "@heroui/switch";
-import {
-  UserIcon,
-  SaveIcon,
-  CalendarIcon,
-  DollarSignIcon,
-  TruckIcon,
-  HeartPulseIcon,
-  IdCardIcon,
-} from "lucide-react";
+import { UserIcon, SaveIcon, Bot } from "lucide-react";
+import { addToast } from "@heroui/toast";
+import { Alert } from "@heroui/alert";
+import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Chip } from "@heroui/chip";
+import { Progress } from "@heroui/progress";
+
+import SimpleDocumentUploader from "../documentSimpleUpload";
 
 import {
   Conductor,
   EstadoConductor,
-  SedeTrabajo,
+  initialProcesamientoState,
   PermisosConductor,
+  useConductor,
 } from "@/context/ConductorContext";
 
 interface ModalFormConductorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (conductor: Conductor) => Promise<void>; // Cambiar a Promise<void>
+  onSave: (conductor: Conductor) => Promise<void>;
+  onSaveWithIA: (conductor: Conductor) => Promise<void>; // Nueva función para IA
   conductorEditar?: Conductor | null;
   titulo?: string;
 }
 
-type ConductorKey = keyof Conductor;
+interface DocumentoState {
+  file?: File;
+  fecha_vigencia?: Date;
+  uploadedAt?: Date;
+  existente?: any;
+  esNuevo?: boolean;
+}
 
-// Tipos de identificación comunes en Colombia
+// Configuración de documentos para IA
+const documentTypesIA = [
+  {
+    key: "CEDULA",
+    label: "Cédula de Ciudadanía",
+    required: true,
+    description:
+      "Se extraerá: nombre, apellido, identificación, fecha nacimiento, género, tipo sangre",
+  },
+  {
+    key: "LICENCIA",
+    label: "Licencia de Conducción",
+    required: true,
+    description:
+      "Se extraerá: categorías, fechas de vigencia, fecha expedición",
+  },
+  {
+    key: "CONTRATO",
+    label: "Contrato Laboral",
+    required: true,
+    description:
+      "Se extraerá: fecha ingreso, salario, sede, términos contractuales",
+  },
+  {
+    key: "FOTO_PERFIL",
+    label: "Foto del Conductor",
+    required: false,
+    description: "Foto opcional para el perfil",
+  },
+];
+
 const tiposIdentificacion = [
   { key: "CC", label: "Cédula de Ciudadanía" },
   { key: "CE", label: "Cédula de Extranjería" },
@@ -46,75 +82,30 @@ const tiposIdentificacion = [
   { key: "NIT", label: "NIT" },
 ];
 
-// Categorías de licencia de conducción en Colombia
-const categoriasLicencia = [
-  { key: "A1", label: "A1 - Motocicletas hasta 125 cc" },
-  { key: "A2", label: "A2 - Motocicletas de más de 125 cc" },
-  { key: "B1", label: "B1 - Automóviles, camperos, camionetas" },
-  { key: "B2", label: "B2 - Camiones rígidos, busetas y buses" },
-  { key: "B3", label: "B3 - Vehículos articulados" },
-  { key: "C1", label: "C1 - Automóviles, camperos, camionetas" },
-  { key: "C2", label: "C2 - Camiones rígidos, busetas y buses" },
-  { key: "C3", label: "C3 - Vehículos articulados" },
-];
-
-// Lista de EPS en Colombia
-const listaEPS = [
-  "Compensar",
-  "Famisanar",
-  "Nueva EPS",
-  "Sanitas",
-  "Sura",
-  "Salud Total",
-  "Coosalud",
-  "Medimás",
-  "Aliansalud",
-  "Capital Salud",
-  "Comfenalco Valle",
-  "Otra",
-];
-
-// Lista de fondos de pensiones en Colombia
-const listaFondosPension = [
-  "Colpensiones",
-  "Porvenir",
-  "Protección",
-  "Colfondos",
-  "Old Mutual",
-  "Otro",
-];
-
-// Lista de ARL en Colombia
-const listaARL = [
-  "Sura",
-  "Positiva",
-  "Colmena",
-  "Bolívar",
-  "Alfa",
-  "Liberty",
-  "Otra",
-];
-
-// Tipos de contrato
-const tiposContrato = [
-  { key: "INDEFINIDO", label: "Contrato a término indefinido" },
-  { key: "FIJO", label: "Contrato a término fijo" },
-  { key: "OBRA_LABOR", label: "Contrato por obra o labor" },
-  { key: "PRESTACION", label: "Contrato de prestación de servicios" },
-  { key: "TEMPORAL", label: "Contrato temporal" },
-];
-
 const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
   isOpen,
   onClose,
   onSave,
+  onSaveWithIA,
   conductorEditar = null,
   titulo = "Registrar Nuevo Conductor",
 }) => {
-  // Estado para determinar si el conductor es de planta
-  const [esPlanta, setEsPlanta] = useState<boolean>(false);
+  // Estados del context
+  const {
+    procesamiento,
+    currentConductor,
+    setProcesamiento,
+    setCurrentConductor,
+  } = useConductor();
 
-  // Estado para almacenar los datos del formulario
+  // Estados locales
+  const [modoCreacion, setModoCreacion] = useState<"tradicional" | "ia">("ia"); // Por defecto IA
+  const [documentos, setDocumentos] = useState<Record<string, DocumentoState>>(
+    {},
+  );
+  const [loading, setLoading] = useState(false);
+
+  // Estado del formulario
   const [formData, setFormData] = useState<Partial<Conductor>>({
     nombre: "",
     apellido: "",
@@ -123,8 +114,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
     telefono: "",
     email: "",
     password: "",
-    cargo: "Conductor",
-    estado: EstadoConductor.ACTIVO,
+    estado: EstadoConductor.disponible,
     permisos: {
       verViajes: true,
       verMantenimientos: false,
@@ -133,40 +123,42 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
     },
   });
 
-  // Estado para manejar la validación
-  const [errores, setErrores] = useState<Record<string, boolean>>({
-    nombre: false,
-    apellido: false,
-    numero_identificacion: false,
-    telefono: false,
-    email: false,
-    password: false,
-  });
+  // Estados de validación
+  const [errores, setErrores] = useState<Record<string, boolean>>({});
+  const [erroresDocumentos, setErroresDocumentos] = useState<
+    Record<string, boolean>
+  >({});
 
-  // Efecto para cargar datos cuando se está editando
+  // ✅ EFECTOS
   useEffect(() => {
     if (conductorEditar) {
-      setFormData({
-        ...conductorEditar,
-        // Asegurarse de que la contraseña no se muestre (por seguridad)
-        password: "",
-      });
-
-      // Determinar si es de planta basado en los campos
-      const tieneInfoLaboral = !!(
-        conductorEditar.cargo &&
-        conductorEditar.fecha_ingreso &&
-        conductorEditar.salario_base
-      );
-
-      setEsPlanta(tieneInfoLaboral);
+      setFormData({ ...conductorEditar, password: "" });
+      setModoCreacion("tradicional"); // Si editamos, usar modo tradicional
     } else {
-      // Resetear el formulario si no hay conductor para editar
       resetForm();
     }
   }, [conductorEditar, isOpen]);
 
-  // Función para resetear el formulario
+  // Sincronizar datos del currentConductor (datos extraídos por IA)
+  useEffect(() => {
+    if (currentConductor && modoCreacion === "ia") {
+      setFormData((prev) => ({ ...prev, ...currentConductor }));
+    }
+  }, [currentConductor, modoCreacion]);
+
+  // ✅ AUTO-CIERRE CUANDO IA TERMINA EXITOSAMENTE
+  useEffect(() => {
+    if (
+      modoCreacion === "ia" &&
+      procesamiento.estado === "completado" &&
+      !loading
+    ) {
+      // Cerrar modal automáticamente cuando la IA termine exitosamente
+      handleClose();
+    }
+  }, [procesamiento.estado, modoCreacion, loading]);
+
+  // ✅ FUNCIONES DE UTILIDAD
   const resetForm = () => {
     setFormData({
       nombre: "",
@@ -176,8 +168,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
       telefono: "",
       email: "",
       password: "",
-      cargo: "Conductor",
-      estado: EstadoConductor.ACTIVO,
+      estado: EstadoConductor.disponible,
       permisos: {
         verViajes: true,
         verMantenimientos: false,
@@ -185,659 +176,551 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
         actualizarPerfil: true,
       },
     });
-    setEsPlanta(false);
-    setErrores({
-      nombre: false,
-      apellido: false,
-      numero_identificacion: false,
-      telefono: false,
-      email: false,
-      password: false,
-    });
+    setModoCreacion("ia");
+    setErrores({});
+    setDocumentos({});
+    setErroresDocumentos({});
+    setCurrentConductor(null);
+    setProcesamiento(initialProcesamientoState);
   };
 
-  // Manejar cambios en los inputs
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
+  const validateRequiredDocuments = () => {
+    return documentTypesIA
+      .filter((doc) => doc.required)
+      .filter((doc) => {
+        const documento = documentos[doc.key];
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Limpiar error al escribir
-    if (errores[name]) {
-      setErrores((prev) => ({
-        ...prev,
-        [name]: false,
-      }));
-    }
+        return !(documento && (documento.file || documento.existente));
+      })
+      .map((doc) => doc.label);
   };
 
-  // Manejar cambios en los switches
-  const handleSwitchChange = (name: string, checked: boolean) => {
-    if (name === "esPlanta") {
-      setEsPlanta(checked);
+  const preparearDocumentosParaEnvio = () => {
+    const documentosParaEnvio: Record<string, any> = {};
 
-      return;
-    }
+    Object.keys(documentos).forEach((key) => {
+      const documento = documentos[key];
 
-    // Para otros switches (como permisos)
-    if (name.startsWith("permisos.")) {
-      const permisoKey = name.split(".")[1] as keyof PermisosConductor;
-
-      setFormData((prev) => {
-        // Asegúrate de que prev.permisos exista o crea un objeto vacío
-        const prevPermisos = prev.permisos || {
-          verViajes: false,
-          verMantenimientos: false,
-          verDocumentos: false,
-          actualizarPerfil: false,
+      if (documento?.file) {
+        documentosParaEnvio[key] = {
+          file: documento.file,
+          ...(documento.fecha_vigencia && {
+            fecha_vigencia: documento.fecha_vigencia,
+          }),
         };
-
-        return {
-          ...prev,
-          permisos: {
-            ...prevPermisos,
-            [permisoKey]: checked,
-          },
-        };
-      });
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: checked,
-      }));
-    }
-  };
-
-  // Validar y guardar datos
-  const handleSave = () => {
-    // Campos requeridos para todos los conductores
-
-    // Asegúrate de que camposRequeridos contenga solo claves válidas
-    const camposRequeridos: ConductorKey[] = [
-      "nombre",
-      "apellido",
-      "tipo_identificacion",
-      "numero_identificacion",
-      "telefono",
-      // Agrega otras claves según sea necesario
-    ];
-
-    // Campos adicionales requeridos para conductores de planta
-    if (esPlanta) {
-      camposRequeridos.push("email", "cargo", "fecha_ingreso", "salario_base");
-    }
-
-    // Validar campos requeridos
-    const nuevosErrores: Record<ConductorKey, boolean> = {} as Record<
-      ConductorKey,
-      boolean
-    >;
-
-    camposRequeridos.forEach((campo) => {
-      if (campo === "salario_base") {
-        nuevosErrores[campo] = !formData[campo] || formData[campo] === 0;
-      } else {
-        nuevosErrores[campo] = !formData[campo]?.toString().trim();
       }
     });
 
-    setErrores(nuevosErrores);
-
-    // Si hay errores, no continuar
-    if (Object.values(nuevosErrores).some((error) => error)) {
-      return;
-    }
-
-    // Enviar datos
-    onSave(formData as Conductor);
+    return documentosParaEnvio;
   };
 
+  // ✅ AUTO-REGISTRO CUANDO IA COMPLETA
+  const handleAutoRegistroIA = async () => {
+    setLoading(true);
+    try {
+      console.log("🤖 Registrando automáticamente con datos de IA...");
+
+      const datosCompletos = {
+        ...formData,
+        documentos: preparearDocumentosParaEnvio(),
+      };
+
+      await onSaveWithIA(datosCompletos as Conductor);
+
+      addToast({
+        title: "✅ Conductor registrado",
+        description: "El conductor ha sido registrado exitosamente con IA",
+        color: "success",
+      });
+
+      handleClose();
+    } catch (error) {
+      console.error("❌ Error en auto-registro IA:", error);
+      addToast({
+        title: "Error en registro automático",
+        description:
+          "Hubo un problema al registrar el conductor automáticamente",
+        color: "danger",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ MANEJADORES DE EVENTOS
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      if (modoCreacion === "ia") {
+        // Validar documentos requeridos para IA
+        const missingDocs = validateRequiredDocuments();
+
+        if (missingDocs.length > 0) {
+          addToast({
+            title: "Documentos faltantes",
+            description: `Faltan: ${missingDocs.join(", ")}`,
+            color: "danger",
+          });
+
+          return;
+        }
+
+        // Preparar datos para IA - el registro será automático
+        const datosCompletos = {
+          ...formData,
+          documentos: preparearDocumentosParaEnvio(),
+        };
+
+        await onSaveWithIA(datosCompletos as Conductor);
+      } else {
+        // Modo tradicional
+        const camposRequeridos = [
+          "nombre",
+          "apellido",
+          "numero_identificacion",
+          "telefono",
+        ];
+        const nuevosErrores: Record<string, boolean> = {};
+
+        camposRequeridos.forEach((campo) => {
+          if (!formData[campo as keyof typeof formData]) {
+            nuevosErrores[campo] = true;
+          }
+        });
+
+        setErrores(nuevosErrores);
+
+        if (Object.values(nuevosErrores).some((error) => error)) {
+          return;
+        }
+
+        await onSave(formData as Conductor);
+        handleClose();
+      }
+    } catch (error) {
+      console.error("Error en handleSave:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (errores[name]) {
+      setErrores((prev) => ({ ...prev, [name]: false }));
+    }
+  };
+
+  const handleSwitchChange = (name: string, checked: boolean) => {
+    if (name.startsWith("permisos.")) {
+      const permisoKey = name.split(".")[1] as keyof PermisosConductor;
+
+      setFormData((prev) => ({
+        ...prev,
+        permisos: { ...prev.permisos, [permisoKey]: checked },
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    }
+  };
+
+  const handleDocumentChange = (docKey: string, file: File) => {
+    setDocumentos((prev) => ({
+      ...prev,
+      [docKey]: {
+        file,
+        uploadedAt: new Date(),
+        esNuevo: true,
+      },
+    }));
+
+    if (erroresDocumentos[docKey]) {
+      setErroresDocumentos((prev) => ({ ...prev, [docKey]: false }));
+    }
+  };
+
+  const handleDocumentRemove = (docKey: string) => {
+    setDocumentos((prev) => {
+      const newDocs = { ...prev };
+
+      delete newDocs[docKey];
+
+      return newDocs;
+    });
+  };
+
+  const handleClose = () => {
+    onClose();
+    resetForm();
+  };
+
+  // ✅ RENDERIZADO
   return (
     <Modal
-      backdrop={"blur"}
+      backdrop="blur"
       isOpen={isOpen}
       scrollBehavior="inside"
       size="4xl"
-      onClose={onClose}
+      onClose={handleClose}
     >
       <ModalContent>
         {() => (
           <>
             <ModalHeader className="flex flex-col gap-1">
               <div className="flex items-center space-x-2">
-                <UserIcon className="h-5 w-5 text-emerald-600" />
+                {modoCreacion === "ia" ? (
+                  <Bot className="h-5 w-5 text-blue-600" />
+                ) : (
+                  <UserIcon className="h-5 w-5 text-emerald-600" />
+                )}
                 <h3 className="text-lg font-semibold">
-                  {conductorEditar ? "Editar Conductor" : titulo}
+                  {conductorEditar ? "Actualizar Conductor" : titulo}
+                  {modoCreacion === "ia" && !conductorEditar && (
+                    <Chip
+                      className="ml-2"
+                      color="primary"
+                      size="sm"
+                      variant="flat"
+                    >
+                      Con IA
+                    </Chip>
+                  )}
                 </h3>
               </div>
             </ModalHeader>
 
             <ModalBody>
               <div className="space-y-6">
-                {/* Switch para determinar si es de planta */}
-                <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50">
-                  <div>
-                    <span className="font-medium">Conductor de planta</span>
-                    <p className="text-sm text-gray-500">
-                      Marque esta opción si el conductor es empleado directo
-                    </p>
-                  </div>
-                  <Switch
-                    color="success"
-                    isSelected={esPlanta}
-                    onChange={(e) =>
-                      handleSwitchChange("esPlanta", e.target.checked)
-                    }
-                  />
-                </div>
+                {/* ✅ SELECTOR DE MODO (Solo para nuevos conductores) */}
+                {!conductorEditar &&
+                  !procesamiento.sessionId &&
+                  !currentConductor && (
+                    <Card>
+                      <CardBody>
+                        <div>
+                          <div>
+                            <h4 className="font-semibold text-lg mb-2">
+                              Método de Registro
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div
+                                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                  modoCreacion === "ia"
+                                    ? "border-blue-500 bg-blue-50"
+                                    : "border-gray-200 hover:border-gray-300"
+                                }`}
+                                role="button"
+                                onClick={() => setModoCreacion("ia")}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Bot className="h-8 w-8 text-blue-600" />
+                                  <div>
+                                    <h5 className="font-semibold">
+                                      Con Inteligencia Artificial
+                                    </h5>
+                                    <p className="text-sm text-gray-600">
+                                      Extrae automáticamente los datos y
+                                      registra el conductor
+                                    </p>
+                                    <Chip
+                                      className="mt-1"
+                                      color="success"
+                                      size="sm"
+                                      variant="flat"
+                                    >
+                                      Automático
+                                    </Chip>
+                                  </div>
+                                </div>
+                              </div>
 
-                {/* Sección 1: Información básica (siempre visible) */}
-                <div className="border p-4 rounded-md">
-                  <h4 className="text-md font-semibold mb-4 border-b pb-2">
-                    Información Básica
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      isRequired
-                      errorMessage={
-                        errores.nombre ? "El nombre es requerido" : ""
-                      }
-                      isInvalid={errores.nombre}
-                      label="Nombres"
-                      name="nombre"
-                      placeholder="Ingrese nombres"
-                      value={formData.nombre || ""}
-                      onChange={handleChange}
-                    />
+                              <div
+                                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                  modoCreacion === "tradicional"
+                                    ? "border-emerald-500 bg-emerald-50"
+                                    : "border-gray-200 hover:border-gray-300"
+                                }`}
+                                role="button"
+                                onClick={() => setModoCreacion("tradicional")}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <UserIcon className="h-8 w-8 text-emerald-600" />
+                                  <div>
+                                    <h5 className="font-semibold">
+                                      Método Tradicional
+                                    </h5>
+                                    <p className="text-sm text-gray-600">
+                                      Ingreso manual de información básica
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  )}
 
-                    <Input
-                      isRequired
-                      errorMessage={
-                        errores.apellido ? "El apellido es requerido" : ""
-                      }
-                      isInvalid={errores.apellido}
-                      label="Apellidos"
-                      name="apellido"
-                      placeholder="Ingrese apellidos"
-                      value={formData.apellido || ""}
-                      onChange={handleChange}
-                    />
+                {/* ✅ PROGRESO DEL PROCESAMIENTO IA */}
+                {modoCreacion === "ia" &&
+                  procesamiento.sessionId &&
+                  procesamiento.estado !== "completado" && (
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center gap-2">
+                          <Bot className="h-5 w-5 text-blue-600" />
+                          <h3 className="text-lg font-semibold">
+                            Procesamiento con IA
+                          </h3>
+                        </div>
+                      </CardHeader>
+                      <CardBody>
+                        <div className="space-y-4">
+                          <Progress
+                            showValueLabel
+                            color="primary"
+                            label="Progreso"
+                            value={procesamiento.progreso || 0}
+                          />
+                          <p className="text-sm text-gray-600">
+                            {procesamiento.mensaje}
+                          </p>
+                          {procesamiento.error && (
+                            <Alert color="danger" variant="faded">
+                              {procesamiento.error}
+                            </Alert>
+                          )}
+                        </div>
+                      </CardBody>
+                    </Card>
+                  )}
 
-                    <Select
-                      isRequired
-                      defaultSelectedKeys={
-                        formData.tipo_identificacion
-                          ? [formData.tipo_identificacion]
-                          : []
-                      }
-                      label="Tipo de Identificación"
-                      name="tipo_identificacion"
-                      placeholder="Seleccione tipo"
-                      onChange={handleChange}
-                    >
-                      {tiposIdentificacion.map((tipo) => (
-                        <SelectItem key={tipo.key} textValue={tipo.key}>
-                          {tipo.label}
-                        </SelectItem>
-                      ))}
-                    </Select>
+                {/* ✅ CARGA DE DOCUMENTOS PARA IA */}
+                {modoCreacion === "ia" &&
+                  !procesamiento.sessionId &&
+                  !currentConductor && (
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center gap-2">
+                          <Bot className="h-5 w-5 text-blue-600" />
+                          <h4 className="font-semibold">
+                            Documentos para Procesamiento IA
+                          </h4>
+                        </div>
+                      </CardHeader>
+                      <CardBody>
+                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            <strong>ℹ️ Proceso automático:</strong> Una vez
+                            cargados los documentos requeridos, la IA extraerá
+                            los datos y registrará el conductor automáticamente.
+                          </p>
+                        </div>
 
-                    <Input
-                      isRequired
-                      errorMessage={
-                        errores.numero_identificacion
-                          ? "El número de identificación es requerido"
-                          : ""
-                      }
-                      isInvalid={errores.numero_identificacion}
-                      label="Número de Identificación"
-                      name="numero_identificacion"
-                      placeholder="Ingrese número"
-                      value={formData.numero_identificacion || ""}
-                      onChange={handleChange}
-                    />
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {documentTypesIA.map((docType) => {
+                            const documento = documentos[docType.key];
 
-                    <Input
-                      isRequired
-                      errorMessage={
-                        errores.telefono ? "El teléfono es requerido" : ""
-                      }
-                      isInvalid={errores.telefono}
-                      label="Teléfono"
-                      name="telefono"
-                      placeholder="Ingrese teléfono"
-                      value={formData.telefono || ""}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
+                            return (
+                              <div
+                                key={docType.key}
+                                className="border rounded-lg p-4"
+                              >
+                                <div className="mb-3">
+                                  <h5 className="font-semibold">
+                                    {docType.label}
+                                  </h5>
+                                  <p className="text-sm text-gray-600">
+                                    {docType.description}
+                                  </p>
+                                  {docType.required && (
+                                    <Chip
+                                      className="mt-1"
+                                      color="danger"
+                                      size="sm"
+                                      variant="flat"
+                                    >
+                                      Requerido
+                                    </Chip>
+                                  )}
+                                </div>
 
-                {/* Solo mostrar el resto de secciones si es de planta */}
-                {esPlanta && (
-                  <>
-                    {/* Sección 2: Información de Contacto y Acceso */}
-                    <div className="border p-4 rounded-md">
-                      <h4 className="text-md font-semibold mb-4 border-b pb-2">
-                        Información de Contacto y Acceso
-                      </h4>
+                                <SimpleDocumentUploader
+                                  documentKey={docType.key}
+                                  errores={erroresDocumentos}
+                                  existingDocument={null}
+                                  fecha_vigencia={null}
+                                  file={documento?.file || null}
+                                  isExisting={false}
+                                  label=""
+                                  vigencia={false}
+                                  onChange={handleDocumentChange}
+                                  onRemove={handleDocumentRemove}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardBody>
+                    </Card>
+                  )}
+
+                {/* ✅ FORMULARIO TRADICIONAL */}
+                {modoCreacion === "tradicional" && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-5 w-5 text-emerald-600" />
+                        <h4 className="font-semibold">Información Básica</h4>
+                      </div>
+                    </CardHeader>
+                    <CardBody>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Input
                           isRequired
                           errorMessage={
-                            errores.email
-                              ? "El correo electrónico es requerido"
+                            errores.nombre ? "El nombre es requerido" : ""
+                          }
+                          isInvalid={errores.nombre}
+                          label="Nombres"
+                          name="nombre"
+                          placeholder="Ingrese nombres"
+                          value={formData.nombre || ""}
+                          onChange={handleChange}
+                        />
+
+                        <Input
+                          isRequired
+                          errorMessage={
+                            errores.apellido ? "El apellido es requerido" : ""
+                          }
+                          isInvalid={errores.apellido}
+                          label="Apellidos"
+                          name="apellido"
+                          placeholder="Ingrese apellidos"
+                          value={formData.apellido || ""}
+                          onChange={handleChange}
+                        />
+
+                        <Select
+                          isRequired
+                          defaultSelectedKeys={
+                            formData.tipo_identificacion
+                              ? [formData.tipo_identificacion]
+                              : []
+                          }
+                          label="Tipo de Identificación"
+                          name="tipo_identificacion"
+                          placeholder="Seleccione tipo"
+                          onChange={handleChange}
+                        >
+                          {tiposIdentificacion.map((tipo) => (
+                            <SelectItem key={tipo.key}>{tipo.label}</SelectItem>
+                          ))}
+                        </Select>
+
+                        <Input
+                          isRequired
+                          errorMessage={
+                            errores.numero_identificacion
+                              ? "La identificación es requerida"
                               : ""
                           }
-                          isInvalid={errores.email}
-                          label="Correo Electrónico"
+                          isInvalid={errores.numero_identificacion}
+                          label="Número de Identificación"
+                          name="numero_identificacion"
+                          placeholder="Ingrese número"
+                          value={formData.numero_identificacion || ""}
+                          onChange={handleChange}
+                        />
+
+                        <Input
+                          isRequired
+                          errorMessage={
+                            errores.telefono ? "El teléfono es requerido" : ""
+                          }
+                          isInvalid={errores.telefono}
+                          label="Teléfono"
+                          name="telefono"
+                          placeholder="Ingrese teléfono"
+                          value={formData.telefono || ""}
+                          onChange={handleChange}
+                        />
+
+                        <Input
+                          label="Email"
                           name="email"
                           placeholder="Ingrese email"
                           type="email"
                           value={formData.email || ""}
                           onChange={handleChange}
                         />
-
-                        <Input
-                          errorMessage={
-                            errores.password && !conductorEditar
-                              ? "La contraseña es requerida"
-                              : ""
-                          }
-                          isInvalid={errores.password && !conductorEditar}
-                          isRequired={!conductorEditar}
-                          label={
-                            conductorEditar
-                              ? "Nueva Contraseña (dejar en blanco para mantener)"
-                              : "Contraseña"
-                          }
-                          name="password"
-                          placeholder={
-                            conductorEditar
-                              ? "Nueva contraseña (opcional)"
-                              : "Ingrese contraseña"
-                          }
-                          type="password"
-                          value={formData.password || ""}
-                          onChange={handleChange}
-                        />
-
-                        <Textarea
-                          label="Dirección"
-                          name="direccion"
-                          placeholder="Ingrese dirección"
-                          value={formData.direccion || ""}
-                          onChange={handleChange}
-                        />
                       </div>
-                    </div>
-
-                    {/* Sección 3: Información Personal */}
-                    <div className="border p-4 rounded-md">
-                      <h4 className="text-md font-semibold mb-4 border-b pb-2">
-                        Información Personal
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          label="Fecha de Nacimiento"
-                          name="fecha_nacimiento"
-                          placeholder="YYYY-MM-DD"
-                          type="date"
-                          value={formData.fecha_nacimiento || ""}
-                          onChange={handleChange}
-                        />
-
-                        <Select
-                          label="Género"
-                          name="genero"
-                          placeholder="Seleccione género"
-                          value={formData.genero || ""}
-                          onChange={handleChange}
-                        >
-                          <SelectItem key="masculino" textValue="Masculino">
-                            Masculino
-                          </SelectItem>
-                          <SelectItem key="femenino" textValue="Femenino">
-                            Femenino
-                          </SelectItem>
-                          <SelectItem key="otro" textValue="Otro">
-                            Otro
-                          </SelectItem>
-                        </Select>
-
-                        <Input
-                          label="URL de Foto"
-                          name="fotoUrl"
-                          placeholder="URL de la foto (opcional)"
-                          value={formData.fotoUrl || ""}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Sección 4: Información Laboral */}
-                    <div className="border p-4 rounded-md">
-                      <h4 className="text-md font-semibold mb-4 border-b pb-2">
-                        <span className="flex items-center">
-                          <IdCardIcon className="h-4 w-4 mr-2" />
-                          Información Laboral
-                        </span>
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          isRequired
-                          errorMessage={
-                            errores.cargo ? "El cargo es requerido" : ""
-                          }
-                          isInvalid={errores.cargo}
-                          label="Cargo"
-                          name="cargo"
-                          placeholder="Ingrese cargo"
-                          value={formData.cargo || "Conductor"}
-                          onChange={handleChange}
-                        />
-
-                        <Input
-                          isRequired
-                          errorMessage={
-                            errores.fecha_ingreso
-                              ? "La fecha de ingreso es requerida"
-                              : ""
-                          }
-                          isInvalid={errores.fecha_ingreso}
-                          label="Fecha de Ingreso"
-                          name="fecha_ingreso"
-                          placeholder="YYYY-MM-DD"
-                          startContent={
-                            <CalendarIcon className="h-4 w-4 text-gray-500" />
-                          }
-                          type="date"
-                          value={formData.fecha_ingreso || ""}
-                          onChange={handleChange}
-                        />
-
-                        <Input
-                          isRequired
-                          errorMessage={
-                            errores.salario_base
-                              ? "El salario base es requerido"
-                              : ""
-                          }
-                          isInvalid={errores.salario_base}
-                          label="Salario Base"
-                          name="salario_base"
-                          placeholder="Ingrese salario base"
-                          startContent={
-                            <DollarSignIcon className="h-4 w-4 text-gray-500" />
-                          }
-                          type="number"
-                          value={formData.salario_base?.toString() || ""}
-                          onChange={handleChange}
-                        />
-
-                        <Select
-                          label="Tipo de Contrato"
-                          name="tipo_contrato"
-                          placeholder="Seleccione tipo de contrato"
-                          value={formData.tipo_contrato || ""}
-                          onChange={handleChange}
-                        >
-                          {tiposContrato.map((tipo) => (
-                            <SelectItem key={tipo.key} textValue={tipo.key}>
-                              {tipo.label}
-                            </SelectItem>
-                          ))}
-                        </Select>
-
-                        <Select
-                          label="Sede de Trabajo"
-                          name="sede_trabajo"
-                          placeholder="Seleccione sede"
-                          value={formData.sede_trabajo || ""}
-                          onChange={handleChange}
-                        >
-                          {Object.entries(SedeTrabajo).map(([key, value]) => (
-                            <SelectItem key={key} textValue={value}>
-                              {value}
-                            </SelectItem>
-                          ))}
-                        </Select>
-
-                        <Select
-                          label="Estado"
-                          name="estado"
-                          placeholder="Seleccione estado"
-                          value={formData.estado || EstadoConductor.ACTIVO}
-                          onChange={handleChange}
-                        >
-                          {Object.entries(EstadoConductor).map(
-                            ([key, value]) => (
-                              <SelectItem key={key} textValue={value}>
-                                {value}
-                              </SelectItem>
-                            ),
-                          )}
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Sección 5: Seguridad Social */}
-                    <div className="border p-4 rounded-md">
-                      <h4 className="text-md font-semibold mb-4 border-b pb-2">
-                        <span className="flex items-center">
-                          <HeartPulseIcon className="h-4 w-4 mr-2" />
-                          Seguridad Social
-                        </span>
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Select
-                          label="EPS"
-                          name="eps"
-                          placeholder="Seleccione EPS"
-                          value={formData.eps || ""}
-                          onChange={handleChange}
-                        >
-                          {listaEPS.map((eps) => (
-                            <SelectItem key={eps} textValue={eps}>
-                              {eps}
-                            </SelectItem>
-                          ))}
-                        </Select>
-
-                        <Select
-                          label="Fondo de Pensión"
-                          name="fondo_pension"
-                          placeholder="Seleccione fondo"
-                          value={formData.fondo_pension || ""}
-                          onChange={handleChange}
-                        >
-                          {listaFondosPension.map((fondo) => (
-                            <SelectItem key={fondo} textValue={fondo}>
-                              {fondo}
-                            </SelectItem>
-                          ))}
-                        </Select>
-
-                        <Select
-                          label="ARL"
-                          name="arl"
-                          placeholder="Seleccione ARL"
-                          value={formData.arl || ""}
-                          onChange={handleChange}
-                        >
-                          {listaARL.map((arl) => (
-                            <SelectItem key={arl} textValue={arl}>
-                              {arl}
-                            </SelectItem>
-                          ))}
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Sección 6: Licencia de Conducción */}
-                    <div className="border p-4 rounded-md">
-                      <h4 className="text-md font-semibold mb-4 border-b pb-2">
-                        <span className="flex items-center">
-                          <TruckIcon className="h-4 w-4 mr-2" />
-                          Licencia de Conducción
-                        </span>
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Input
-                          label="Número de Licencia"
-                          name="licencia_conduccion"
-                          placeholder="Ingrese número de licencia"
-                          value={formData.licencia_conduccion || ""}
-                          onChange={handleChange}
-                        />
-
-                        <Select
-                          label="Categoría"
-                          name="categoria_licencia"
-                          placeholder="Seleccione categoría"
-                          value={formData.categoria_licencia || ""}
-                          onChange={handleChange}
-                        >
-                          {categoriasLicencia.map((cat) => (
-                            <SelectItem key={cat.key} textValue={cat.key}>
-                              {cat.label}
-                            </SelectItem>
-                          ))}
-                        </Select>
-
-                        <Input
-                          label="Fecha de Vencimiento"
-                          name="vencimiento_licencia"
-                          placeholder="YYYY-MM-DD"
-                          startContent={
-                            <CalendarIcon className="h-4 w-4 text-gray-500" />
-                          }
-                          type="date"
-                          value={formData.vencimiento_licencia || ""}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Sección 7: Permisos */}
-                    <div className="border p-4 rounded-md">
-                      <h4 className="text-md font-semibold mb-4 border-b pb-2">
-                        Permisos del Sistema
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-sm font-medium">
-                              Ver Viajes
-                            </span>
-                            <p className="text-xs text-gray-500">
-                              Permite ver la información de viajes
-                            </p>
-                          </div>
-                          <Switch
-                            color="success"
-                            isSelected={formData.permisos?.verViajes}
-                            onChange={(e) =>
-                              handleSwitchChange(
-                                "permisos.verViajes",
-                                e.target.checked,
-                              )
-                            }
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-sm font-medium">
-                              Ver Mantenimientos
-                            </span>
-                            <p className="text-xs text-gray-500">
-                              Permite ver mantenimientos de vehículos
-                            </p>
-                          </div>
-                          <Switch
-                            color="success"
-                            isSelected={formData.permisos?.verMantenimientos}
-                            onChange={(e) =>
-                              handleSwitchChange(
-                                "permisos.verMantenimientos",
-                                e.target.checked,
-                              )
-                            }
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-sm font-medium">
-                              Ver Documentos
-                            </span>
-                            <p className="text-xs text-gray-500">
-                              Permite ver documentos
-                            </p>
-                          </div>
-                          <Switch
-                            color="success"
-                            isSelected={formData.permisos?.verDocumentos}
-                            onChange={(e) =>
-                              handleSwitchChange(
-                                "permisos.verDocumentos",
-                                e.target.checked,
-                              )
-                            }
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-sm font-medium">
-                              Actualizar Perfil
-                            </span>
-                            <p className="text-xs text-gray-500">
-                              Permite actualizar su propio perfil
-                            </p>
-                          </div>
-                          <Switch
-                            color="success"
-                            isSelected={formData.permisos?.actualizarPerfil}
-                            onChange={(e) =>
-                              handleSwitchChange(
-                                "permisos.actualizarPerfil",
-                                e.target.checked,
-                              )
-                            }
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </>
+                    </CardBody>
+                  </Card>
                 )}
               </div>
             </ModalBody>
 
-            <ModalFooter>
-              <Button
-                color="danger"
-                radius="sm"
-                variant="light"
-                onPress={onClose}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
-                startContent={<SaveIcon className="h-4 w-4" />}
-                onPress={handleSave}
-              >
-                {conductorEditar ? "Actualizar" : "Guardar"}
-              </Button>
-            </ModalFooter>
+            {/* No mostrar el footer si el procesamiento está completado */}
+            {procesamiento.estado !== "completado" && (
+              <ModalFooter>
+                <div className="flex gap-3 w-full justify-between">
+                  {/* Botón Cancelar */}
+                  <Button
+                    color="danger"
+                    isDisabled={loading || !!procesamiento.sessionId}
+                    variant="light"
+                    onPress={handleClose}
+                  >
+                    Cancelar
+                  </Button>
+
+                  <div className="flex gap-2">
+                    {/* Botón Reiniciar para errores o cuando hay procesamiento */}
+                    {(procesamiento.estado === "error" ||
+                      procesamiento.sessionId) && (
+                      <Button
+                        color="warning"
+                        isDisabled={loading}
+                        variant="flat"
+                        onPress={resetForm}
+                      >
+                        Reiniciar
+                      </Button>
+                    )}
+
+                    {/* Botón principal - solo mostrar si no hay procesamiento activo */}
+                    {!procesamiento.sessionId && (
+                      <Button
+                        color="primary"
+                        isLoading={loading}
+                        startContent={
+                          !loading ? (
+                            <SaveIcon className="h-4 w-4" />
+                          ) : undefined
+                        }
+                        onPress={handleSave}
+                      >
+                        {loading
+                          ? modoCreacion === "ia"
+                            ? "Procesando con IA..."
+                            : "Guardando..."
+                          : modoCreacion === "ia"
+                            ? "Procesar con IA"
+                            : "Guardar"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </ModalFooter>
+            )}
           </>
         )}
       </ModalContent>

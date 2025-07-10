@@ -6,6 +6,8 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  Dispatch,
+  SetStateAction,
 } from "react";
 import { AxiosError, isAxiosError } from "axios";
 import { addToast } from "@heroui/toast";
@@ -25,10 +27,12 @@ export enum SedeTrabajo {
 }
 
 export enum EstadoConductor {
-  ACTIVO = "ACTIVO",
-  INACTIVO = "INACTIVO",
-  SUSPENDIDO = "SUSPENDIDO",
-  RETIRADO = "RETIRADO",
+  servicio = "servicio",
+  disponible = "disponible",
+  descanso = "descanso",
+  vacaciones = "vacaciones",
+  incapacidad = "incapacidad",
+  desvinculado = "desvinculado",
 }
 
 // Interfaces
@@ -59,6 +63,7 @@ export interface Conductor {
   fotoUrl?: string;
   fecha_nacimiento?: string; // Formato: YYYY-MM-DD
   genero?: string;
+  tipo_sangre?: string;
 
   // Información laboral
   cargo: string;
@@ -74,18 +79,54 @@ export interface Conductor {
   arl?: string;
 
   // Documentos de conducción
-  licencia_conduccion?: string;
+  licencia_conduccion?: {
+    fecha_expedicion: string;
+    categorias: {
+      categoria: string;
+      vigencia_hasta: string;
+    }[];
+  };
   categoria_licencia?: string;
   vencimiento_licencia?: string; // Formato: YYYY-MM-DD
 
   // Control de acceso
   ultimo_acceso?: Date;
   permisos: PermisosConductor;
+  documentos?: Documento[];
 
   // Campos de auditoría
   createdAt?: Date;
   updatedAt?: Date;
   creado_por_id?: string;
+  [key: string]: any;
+}
+
+export interface Documento {
+  id: string;
+  conductor_id: string;
+  categoria: string;
+  nombre_original: string;
+  nombre_archivo: string;
+  ruta_archivo: string;
+  s3_key: string;
+  filename: string;
+  mimetype: string;
+  size: number;
+  fecha_vigencia: string;
+  estado: string;
+  upload_date: string;
+  metadata: {
+    size: number;
+    bucket: string;
+    s3Location: string;
+    processedAt: string;
+    originalPath: string;
+    fileExtension: string;
+    uploadSession: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  modelo_id: string | null;
 }
 
 export interface CrearConductorRequest {
@@ -112,7 +153,18 @@ export interface CrearConductorRequest {
   categoria_licencia?: string;
   vencimiento_licencia?: string;
   sede_trabajo?: SedeTrabajo;
+
+  documentos?: DocumentosConductor;
   permisos?: Partial<PermisosConductor>;
+}
+
+// Tipos específicos para diferentes tipos de creación
+export interface crearConductorRequest
+  extends Omit<CrearConductorRequest, "documentos"> {}
+
+export interface CrearConductorConDocumentosRequest
+  extends CrearConductorRequest {
+  documentos: DocumentosConductor;
 }
 
 export interface BusquedaParams {
@@ -128,7 +180,9 @@ export interface BusquedaParams {
 }
 
 export interface ActualizarConductorRequest
-  extends Partial<CrearConductorRequest> {}
+  extends Partial<CrearConductorRequest> {
+  id: string;
+}
 
 export interface ConductorAuthResult {
   conductor: Omit<Conductor, "password">;
@@ -176,56 +230,99 @@ export interface ConductoresState {
   currentPage: number;
 }
 
+interface ErrorProcesamiento {
+  error: string;
+  mensaje: string;
+  sessionId: string;
+  conductor: Conductor;
+}
+
+export interface DocumentoConductor {
+  file: File;
+}
+
+export interface DocumentosConductor {
+  CEDULA?: DocumentoConductor;
+  LICENCIA?: DocumentoConductor;
+  CONTRATO?: DocumentoConductor;
+}
+
+interface CreacionResponse {
+  conductor: Conductor;
+  documentos: Documento[];
+  procesamiento: string | null;
+}
+
 // Funciones utilitarias
 export const getEstadoColor = (estado: EstadoConductor) => {
   switch (estado) {
-    case EstadoConductor.ACTIVO:
+    case EstadoConductor.servicio:
       return {
         bg: "bg-green-100",
-        text: "text-green-800",
+        text: "text-green-500",
         border: "border-green-200",
         dot: "bg-green-500",
-        badge: "bg-green-100 text-green-800",
-        color: "#16a34a",
-        lightColor: "#dcfce7",
+        badge: "bg-green-100 text-green-500",
+        color: "#22c55e", // text-green-500
+        lightColor: "#dcfce7", // bg-green-100
       };
-    case EstadoConductor.INACTIVO:
-      return {
-        bg: "bg-gray-100",
-        text: "text-gray-800",
-        border: "border-gray-200",
-        dot: "bg-gray-500",
-        badge: "bg-gray-100 text-gray-800",
-        color: "#71717a",
-        lightColor: "#f4f4f5",
-      };
-    case EstadoConductor.SUSPENDIDO:
-      return {
-        bg: "bg-yellow-100",
-        text: "text-yellow-800",
-        border: "border-yellow-200",
-        dot: "bg-yellow-500",
-        badge: "bg-yellow-100 text-yellow-800",
-        color: "#ca8a04",
-        lightColor: "#fef9c3",
-      };
-    case EstadoConductor.RETIRADO:
+    case EstadoConductor.disponible:
       return {
         bg: "bg-red-100",
-        text: "text-red-800",
+        text: "text-red-500",
         border: "border-red-200",
         dot: "bg-red-500",
-        badge: "bg-red-100 text-red-800",
-        color: "#dc2626",
-        lightColor: "#fee2e2",
+        badge: "bg-red-100 text-red-500",
+        color: "#ef4444", // text-red-500
+        lightColor: "#fee2e2", // bg-red-100
+      };
+    case EstadoConductor.descanso:
+      return {
+        bg: "bg-fuchsia-100",
+        text: "text-fuchsia-500",
+        border: "border-fuchsia-200",
+        dot: "bg-fuchsia-500",
+        badge: "bg-fuchsia-100 text-fuchsia-500",
+        color: "#d946ef", // text-stone-500
+        lightColor: "#fae8ff", // bg-stone-100
+      };
+    case EstadoConductor.vacaciones:
+      return {
+        bg: "bg-amber-100",
+        text: "text-amber-500",
+        border: "border-amber-200",
+        dot: "bg-amber-500",
+        badge: "bg-amber-100 text-amber-500",
+        color: "#f59e42", // text-amber-500
+        lightColor: "#fef3c7", // bg-amber-100
+      };
+    case EstadoConductor.incapacidad:
+      return {
+        bg: "bg-primary-100",
+        text: "text-primary-500",
+        border: "border-primary-200",
+        dot: "bg-primary-500",
+        badge: "bg-primary-100 text-primary-500",
+        color: "#3b82f6", // text-primary-500 (assuming blue-500)
+        lightColor: "#dbeafe", // bg-primary-100 (assuming blue-100)
+      };
+    case EstadoConductor.desvinculado:
+      return {
+        bg: "bg-gray-100",
+        text: "text-gray-500",
+        border: "border-gray-200",
+        dot: "bg-gray-500",
+        badge: "bg-gray-100 text-gray-500",
+        color: "#71717a", // text-gray-500
+        lightColor: "#f4f4f5", // bg-gray-100
       };
     default:
       return {
         bg: "bg-gray-100",
-        text: "text-gray-800",
+        text: "text-gray-500",
         border: "border-gray-200",
         dot: "bg-gray-500",
-        badge: "bg-gray-100 text-gray-800",
+        badge: "bg-gray-100 text-gray-500",
         color: "#71717a",
         lightColor: "#f4f4f5",
       };
@@ -234,14 +331,18 @@ export const getEstadoColor = (estado: EstadoConductor) => {
 
 export const getEstadoLabel = (estado: EstadoConductor): string => {
   switch (estado) {
-    case EstadoConductor.ACTIVO:
-      return "Activo";
-    case EstadoConductor.INACTIVO:
-      return "Inactivo";
-    case EstadoConductor.SUSPENDIDO:
-      return "Suspendido";
-    case EstadoConductor.RETIRADO:
-      return "Retirado";
+    case EstadoConductor.servicio:
+      return "En servicio";
+    case EstadoConductor.disponible:
+      return "Disponible";
+    case EstadoConductor.descanso:
+      return "En descanso";
+    case EstadoConductor.vacaciones:
+      return "En vacaciones";
+    case EstadoConductor.incapacidad:
+      return "En incapacidad";
+    case EstadoConductor.desvinculado:
+      return "Desvinculado";
     default:
       return "Desconocido";
   }
@@ -253,6 +354,27 @@ export interface SocketEventLog {
   timestamp: Date;
 }
 
+interface Procesamiento {
+  sessionId: string | null;
+  procesados: number;
+  total: number;
+  estado: string | null;
+  mensaje: string;
+  error: string | null;
+  progreso: number;
+  conductor?: Conductor;
+}
+
+export const initialProcesamientoState: Procesamiento = {
+  sessionId: "",
+  procesados: 0,
+  total: 0,
+  progreso: 0,
+  estado: null,
+  mensaje: "",
+  error: "",
+};
+
 // Definición del contexto
 interface ConductorContextType {
   // Estado
@@ -261,6 +383,10 @@ interface ConductorContextType {
   loading: boolean;
   error: string | null;
   validationErrors: ValidationError[] | null;
+  procesamiento: Procesamiento;
+  camposEditables: String[];
+  documentosRequeridos: any[];
+  setProcesamiento: Dispatch<SetStateAction<Procesamiento>>;
 
   // Operaciones CRUD
   fetchConductores: (paramsBusqueda: BusquedaParams) => Promise<void>;
@@ -302,9 +428,36 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     totalPages: 1,
     currentPage: 1,
   });
+
+  const [documentosRequeridos, setDocumentosRequeridos] = useState<string[]>(
+    [],
+  );
+
+  // Estado para el procesamiento de documentos
+  const [procesamiento, setProcesamiento] = useState<Procesamiento>(
+    initialProcesamientoState,
+  );
+
+  useEffect(() => {
+    const fetchDocumentosRequeridos = async () => {
+      try {
+        const response = await apiClient.get<string[]>(
+          "/api/documentos-conductor",
+        );
+
+        setDocumentosRequeridos(response.data);
+      } catch (error) {
+        console.error("Error al obtener documentos requeridos:", error);
+      }
+    };
+
+    fetchDocumentosRequeridos();
+  }, []);
+
   const [currentConductor, setCurrentConductor] = useState<Conductor | null>(
     null,
   );
+  const [camposEditables, setCamposEditables] = useState<String[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<
@@ -365,6 +518,31 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     setValidationErrors(null);
   };
 
+  // ✅ ALTERNATIVA: Función helper para validar documentos de forma más segura
+  const validarDocumentos = (
+    documentos: DocumentosConductor | undefined,
+  ): boolean => {
+    if (!documentos) return false;
+
+    return Object.keys(documentos).length > 0;
+  };
+
+  const extraerCategorias = (
+    documentos: DocumentosConductor | undefined,
+  ): string[] => {
+    const categorias: string[] = [];
+
+    if (!documentos) return categorias;
+
+    Object.entries(documentos).forEach(([categoria, documento]) => {
+      if (documento?.file) {
+        categorias.push(categoria);
+      }
+    });
+
+    return categorias;
+  };
+
   // Operaciones CRUD
   const fetchConductores = async (paramsBusqueda: BusquedaParams = {}) => {
     setLoading(true);
@@ -374,7 +552,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
       // Prepara los parámetros básicos
       const params: any = {
         page: paramsBusqueda.page || conductoresState.currentPage,
-        limit: paramsBusqueda.limit || 10,
+        limit: paramsBusqueda.limit || 15,
         sort: paramsBusqueda.sort || sortDescriptor.column,
         order: paramsBusqueda.order || sortDescriptor.direction,
       };
@@ -486,15 +664,62 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     clearError();
 
     try {
+      const tieneDocumentos = validarDocumentos(data.documentos);
+
+      let endpoint: string;
+      let requestData: any;
+      let headers: Record<string, string> = {};
+
+      if (tieneDocumentos) {
+        endpoint = "/api/conductores";
+        const formData = new FormData();
+
+        // Agregar datos básicos del vehículo
+        Object.keys(data).forEach((key) => {
+          if (key !== "documentos") {
+            const value = data[key as keyof CrearConductorRequest];
+
+            if (value !== undefined && value !== null) {
+              formData.append(key, value.toString());
+            }
+          }
+        });
+
+        // Agregar archivos usando función helper
+        const categorias = extraerCategorias(data.documentos);
+
+        if (data.documentos) {
+          Object.entries(data.documentos).forEach(([_, documento]) => {
+            if (documento?.file) {
+              formData.append("documentos", documento.file);
+            }
+          });
+        }
+
+        formData.append("categorias", JSON.stringify(categorias));
+        requestData = formData;
+
+        headers["Content-Type"] = "multipart/form-data";
+      } else {
+        endpoint = "/api/conductores/basico";
+        const { documentos, ...conductorBasico } = data;
+
+        requestData = conductorBasico;
+        headers["Content-Type"] = "application/json";
+      }
+
+      setProcesamiento(initialProcesamientoState);
+
       const response = await apiClient.post<ApiResponse<Conductor>>(
-        "/api/conductores",
-        data,
+        endpoint,
+        requestData,
+        { headers },
       );
 
       if (response.data && response.data.success) {
         return response.data.data;
       } else {
-        throw new Error(response.data.message || "Error al crear conductor");
+        throw new Error(response.data.message || "Error al crear vehículo");
       }
     } catch (err: any) {
       // Definir un mensaje de error predeterminado
@@ -623,7 +848,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     // Ya no necesitamos un bloque finally aquí, el setLoading lo manejamos en guardarConductor
   };
-  
+
   const actualizarConductor = async (
     id: string,
     data: ActualizarConductorRequest,
@@ -789,7 +1014,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         });
       };
 
-      const handleConductorCreado = (data: Conductor) => {
+      const handleConductorCreado = (data: CreacionResponse) => {
         setSocketEventLogs((prev) => [
           ...prev,
           {
@@ -799,11 +1024,65 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         ]);
 
+        // Mostrar log en consola del nuevo estado
+        setConductoresState((prevState) => {
+          // Agregar el nuevo conductor y ordenar por nombre
+          const newData = [
+            { ...data.conductor, documentos: data.documentos },
+            ...prevState.data,
+          ].sort((a, b) =>
+            a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }),
+          );
+          const newState = {
+            ...prevState,
+            data: newData,
+            count: prevState.count + 1,
+          };
+
+          console.log("Nuevo estado de conductores:", newState);
+
+          return newState;
+        });
+
         addToast({
           title: "Nuevo Conductor",
-          description: `Se ha creado un nuevo conductor: ${data.nombre} ${data.apellido}`,
+          description: `Se ha creado un nuevo conductor: ${data.conductor.nombre} ${data.conductor.apellido}`,
           color: "success",
         });
+      };
+
+      // ✅ Manejador para conductores creados por otros usuarios
+      const handleConductorCreadoGlobal = (data: {
+        usuarioId: string;
+        usuarioNombre: string;
+        conductor: Conductor;
+        documentos: any[];
+        procesamiento: string;
+      }) => {
+        // Solo actualizar si no fue creado por el usuario actual
+        if (data.usuarioId !== user?.id) {
+          setSocketEventLogs((prev) => [
+            ...prev,
+            {
+              eventName: "conductor:creado-global",
+              data,
+              timestamp: new Date(),
+            },
+          ]);
+
+          // ✅ ACTUALIZAR EL LISTADO AUTOMÁTICAMENTE
+          setConductoresState((prevState) => ({
+            ...prevState,
+            data: [data.conductor, ...prevState.data], // Agregar al inicio del array
+            count: prevState.count + 1, // Incrementar el contador
+          }));
+
+          addToast({
+            title: "Nuevo Conductor",
+            description: `${data.usuarioNombre} ha creado un nuevo conductor: ${data.conductor.nombre} ${data.conductor.apellido}`,
+            color: "primary",
+          });
+        }
       };
 
       const handleConductorActualizado = (data: Conductor) => {
@@ -816,6 +1095,19 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         ]);
 
+        // ✅ ACTUALIZAR EL CONDUCTOR EN EL LISTADO
+        setConductoresState((prevState) => ({
+          ...prevState,
+          data: prevState.data.map((conductor) =>
+            conductor.id === data.id ? data : conductor,
+          ),
+        }));
+
+        // ✅ ACTUALIZAR EL CONDUCTOR ACTUAL SI COINCIDE
+        if (currentConductor && currentConductor.id === data.id) {
+          setCurrentConductor(data);
+        }
+
         addToast({
           title: "Conductor Actualizado",
           description: `Se ha actualizado la información del conductor: ${data.nombre} ${data.apellido}`,
@@ -823,13 +1115,110 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         });
       };
 
-      // Registrar manejadores de eventos de conexión
+      // ✅ Manejador para conductores eliminados (opcional)
+      const handleConductorEliminado = (data: {
+        conductorId: string;
+        usuarioNombre?: string;
+      }) => {
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "conductor:eliminado",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // ✅ REMOVER DEL LISTADO
+        setConductoresState((prevState) => ({
+          ...prevState,
+          data: prevState.data.filter(
+            (conductor) => conductor.id !== data.conductorId,
+          ),
+          count: Math.max(0, prevState.count - 1), // Decrementar el contador
+        }));
+
+        // ✅ LIMPIAR CONDUCTOR ACTUAL SI COINCIDE
+        if (currentConductor && currentConductor.id === data.conductorId) {
+          setCurrentConductor(null);
+        }
+
+        addToast({
+          title: "Conductor Eliminado",
+          description: data.usuarioNombre
+            ? `${data.usuarioNombre} ha eliminado un conductor`
+            : "Se ha eliminado un conductor",
+          color: "warning",
+        });
+      };
+
+      const handleErrorProcesamiento = async (data: ErrorProcesamiento) => {
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "conductor:procesamiento:error",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Preservar conductor si ya existe y el nuevo evento no lo trae
+        setProcesamiento((prev) => ({
+          ...prev,
+          sessionId: data.sessionId,
+          error: data.error,
+          estado: "error",
+          mensaje: data.mensaje,
+          progreso: 0,
+          conductor: data.conductor || prev.conductor,
+        }));
+      };
+
+      const handleInicio = (data: any) => {
+        setProcesamiento((prev) => ({
+          ...prev,
+          sessionId: data.sessionId,
+          estado: "iniciando",
+          procesados: data.procesados,
+          mensaje: data.mensaje,
+          progreso: data.progreso,
+        }));
+      };
+
+      const handleProgreso = (data: any) => {
+        setProcesamiento((prev) => ({
+          ...prev,
+          sessionId: data.sessionId,
+          estado: "procesando",
+          procesados: data.procesados,
+          mensaje: data.mensaje,
+          progreso: data.progreso,
+        }));
+      };
+
+      const handleCompletado = (data: any) => {
+        setProcesamiento((prev) => ({
+          ...prev,
+          estado: "completado",
+          progreso: 100,
+          mensaje: data.mensaje,
+          error: "",
+        }));
+      };
+
       socketService.on("connect", handleConnect);
       socketService.on("disconnect", handleDisconnect);
-
-      // Registrar manejadores de eventos de conductores
       socketService.on("conductor:creado", handleConductorCreado);
+      socketService.on("conductor:creado-global", handleConductorCreadoGlobal); // ✅ Nuevo
       socketService.on("conductor:actualizado", handleConductorActualizado);
+      socketService.on("conductor:eliminado", handleConductorEliminado); // ✅ Opcional
+      socketService.on(
+        "conductor:procesamiento:error",
+        handleErrorProcesamiento,
+      );
+      socketService.on("conductor:procesamiento:inicio", handleInicio);
+      socketService.on("conductor:procesamiento:progreso", handleProgreso);
+      socketService.on("conductor:procesamiento:completado", handleCompletado);
 
       return () => {
         // Limpiar al desmontar
@@ -838,7 +1227,13 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
 
         // Limpiar manejadores de eventos de conductores
         socketService.off("conductor:creado");
+        socketService.off("conductor:creado-global"); // ✅ Nuevo
         socketService.off("conductor:actualizado");
+        socketService.off("conductor:eliminado"); // ✅ Opcional
+        socketService.off("conductor:procesamiento:error");
+        socketService.off("conductor:confirmacion:requerida");
+        socketService.off("conductor:procesamiento:progreso");
+        socketService.off("conductor:procesamiento:completado");
       };
     }
   }, [user?.id]);
@@ -856,10 +1251,16 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
     error,
     validationErrors,
 
+    procesamiento,
+    setProcesamiento,
+    camposEditables,
+
     // Propiedades para Socket.IO
     socketConnected,
     socketEventLogs,
     clearSocketEventLogs,
+
+    documentosRequeridos,
 
     fetchConductores,
     getConductor,
