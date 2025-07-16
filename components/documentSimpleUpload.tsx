@@ -25,6 +25,8 @@ import "react-image-crop/dist/ReactCrop.css";
 
 import { apiClient } from "@/config/apiClient";
 import { Documento } from "@/context/ConductorContext";
+import Image from "next/image";
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/modal";
 
 // Formatter para fechas en español
 const formatter = new Intl.DateTimeFormat("es-ES", {
@@ -484,57 +486,78 @@ const SimpleDocumentUploader = ({
     }
   };
 
-  // ✅ Modal de crop para imágenes
+  // ✅ Modal de crop para imágenes CORREGIDO
   if (showCrop && imgSrc) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Recortar imagen de perfil</h3>
-            <Button
-              isIconOnly
-              color="danger"
-              variant="light"
-              onPress={handleCropCancel}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+      <Modal
+        isOpen={showCrop}
+        backdrop="blur"
+        size="sm"
+        placement="center"
+        hideCloseButton
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Recortar imagen de perfil</h3>
+                <Button
+                  isIconOnly
+                  color="danger"
+                  variant="light"
+                  onPress={handleCropCancel}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </ModalHeader>
 
-          <div className="space-y-4">
-            <ReactCrop
-              aspect={1} // Aspecto cuadrado para fotos de perfil
-              crop={crop}
-              minHeight={100}
-              minWidth={100}
-              onChange={(pixelCrop, percentCrop) => setCrop(percentCrop)}
-              onComplete={(c) => setCompletedCrop(c)}
-            >
-              <img
-                ref={imgRef}
-                alt="Imagen a recortar"
-                src={imgSrc}
-                style={{ maxHeight: "400px", maxWidth: "100%" }}
-                onLoad={onImageLoad}
-              />
-            </ReactCrop>
+              <ModalBody className="space-y-4">
+                <div className="flex justify-center">
+                  <ReactCrop
+                    crop={crop}
+                    onChange={(pixelCrop, percentCrop) => setCrop(percentCrop)}
+                    onComplete={(c) => setCompletedCrop(c)}
+                    aspect={1} // Aspecto cuadrado para fotos de perfil
+                    minWidth={100}
+                    minHeight={100}
+                    className="max-w-full"
+                  >
+                    <img
+                      ref={imgRef}
+                      alt="Imagen a recortar"
+                      src={imgSrc}
+                      style={{
+                        maxHeight: '400px',
+                        maxWidth: '100%',
+                        display: 'block'
+                      }}
+                      onLoad={onImageLoad}
+                    />
+                  </ReactCrop>
+                </div>
+              </ModalBody>
 
-            <div className="flex justify-end gap-2">
-              <Button color="danger" variant="light" onPress={handleCropCancel}>
-                Cancelar
-              </Button>
-              <Button
-                color="primary"
-                isDisabled={!completedCrop}
-                onPress={handleCropConfirm}
-              >
-                <Check className="h-4 w-4 mr-2" />
-                Confirmar recorte
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+              <ModalFooter className="flex justify-end gap-2">
+                <Button
+                  color="danger"
+                  variant="light"
+                  onPress={handleCropCancel}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  color="primary"
+                  isDisabled={!completedCrop}
+                  onPress={handleCropConfirm}
+                  startContent={<Check className="h-4 w-4" />}
+                >
+                  Confirmar recorte
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     );
   }
 
@@ -589,10 +612,9 @@ const SimpleDocumentUploader = ({
         <div
           className={`
             border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all
-            ${
-              isDragging
-                ? "border-blue-400 bg-blue-50"
-                : "border-gray-300 hover:border-gray-400"
+            ${isDragging
+              ? "border-blue-400 bg-blue-50"
+              : "border-gray-300 hover:border-gray-400"
             }
             ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}
             ${fileError ? "border-red-300 bg-red-50" : ""}

@@ -71,6 +71,8 @@ export interface Conductor {
   salario_base: number;
   estado: EstadoConductor;
   tipo_contrato?: string;
+  termino_contrato?: string;
+  fecha_terminacion?: string; // Formato: YYYY-MM-DD
   sede_trabajo?: SedeTrabajo;
 
   // Seguridad social
@@ -160,7 +162,7 @@ export interface CrearConductorRequest {
 
 // Tipos específicos para diferentes tipos de creación
 export interface crearConductorRequest
-  extends Omit<CrearConductorRequest, "documentos"> {}
+  extends Omit<CrearConductorRequest, "documentos"> { }
 
 export interface CrearConductorConDocumentosRequest
   extends CrearConductorRequest {
@@ -255,78 +257,70 @@ interface CreacionResponse {
 
 // Funciones utilitarias
 export const getEstadoColor = (estado: EstadoConductor) => {
-  switch (estado) {
-    case EstadoConductor.servicio:
-      return {
-        bg: "bg-green-100",
-        text: "text-green-500",
-        border: "border-green-200",
-        dot: "bg-green-500",
-        badge: "bg-green-100 text-green-500",
-        color: "#22c55e", // text-green-500
-        lightColor: "#dcfce7", // bg-green-100
-      };
-    case EstadoConductor.disponible:
-      return {
-        bg: "bg-red-100",
-        text: "text-red-500",
-        border: "border-red-200",
-        dot: "bg-red-500",
-        badge: "bg-red-100 text-red-500",
-        color: "#ef4444", // text-red-500
-        lightColor: "#fee2e2", // bg-red-100
-      };
-    case EstadoConductor.descanso:
-      return {
-        bg: "bg-fuchsia-100",
-        text: "text-fuchsia-500",
-        border: "border-fuchsia-200",
-        dot: "bg-fuchsia-500",
-        badge: "bg-fuchsia-100 text-fuchsia-500",
-        color: "#d946ef", // text-stone-500
-        lightColor: "#fae8ff", // bg-stone-100
-      };
-    case EstadoConductor.vacaciones:
-      return {
-        bg: "bg-amber-100",
-        text: "text-amber-500",
-        border: "border-amber-200",
-        dot: "bg-amber-500",
-        badge: "bg-amber-100 text-amber-500",
-        color: "#f59e42", // text-amber-500
-        lightColor: "#fef3c7", // bg-amber-100
-      };
-    case EstadoConductor.incapacidad:
-      return {
-        bg: "bg-primary-100",
-        text: "text-primary-500",
-        border: "border-primary-200",
-        dot: "bg-primary-500",
-        badge: "bg-primary-100 text-primary-500",
-        color: "#3b82f6", // text-primary-500 (assuming blue-500)
-        lightColor: "#dbeafe", // bg-primary-100 (assuming blue-100)
-      };
-    case EstadoConductor.desvinculado:
-      return {
-        bg: "bg-gray-100",
-        text: "text-gray-500",
-        border: "border-gray-200",
-        dot: "bg-gray-500",
-        badge: "bg-gray-100 text-gray-500",
-        color: "#71717a", // text-gray-500
-        lightColor: "#f4f4f5", // bg-gray-100
-      };
-    default:
-      return {
-        bg: "bg-gray-100",
-        text: "text-gray-500",
-        border: "border-gray-200",
-        dot: "bg-gray-500",
-        badge: "bg-gray-100 text-gray-500",
-        color: "#71717a",
-        lightColor: "#f4f4f5",
-      };
-  }
+  const colorMap = {
+    [EstadoConductor.servicio]: {
+      bg: "bg-green-100 hover:bg-green-200",
+      text: "text-green-700",
+      border: "border-green-200",
+      dot: "bg-green-500",
+      badge: "bg-green-100 text-green-700",
+      color: "#15803d", // green-700 for better contrast
+      lightColor: "#a4f4cf",
+      gradient: "from-green-50 to-green-100",
+    },
+    [EstadoConductor.disponible]: {
+      bg: "bg-blue-100 hover:bg-blue-200",
+      text: "text-blue-700",
+      border: "border-blue-200",
+      dot: "bg-blue-500",
+      badge: "bg-blue-100 text-blue-700",
+      color: "#1d4ed8", // blue-700
+      lightColor: "#bfdbfe",
+      gradient: "from-blue-50 to-blue-100",
+    },
+    [EstadoConductor.descanso]: {
+      bg: "bg-purple-100 hover:bg-purple-200",
+      text: "text-purple-700",
+      border: "border-purple-200",
+      dot: "bg-purple-500",
+      badge: "bg-purple-100 text-purple-700",
+      color: "#7c3aed", // purple-700
+      lightColor: "#e9d5ff",
+      gradient: "from-purple-50 to-purple-100",
+    },
+    [EstadoConductor.vacaciones]: {
+      bg: "bg-amber-100 hover:bg-amber-200",
+      text: "text-amber-700",
+      border: "border-amber-200",
+      dot: "bg-amber-500",
+      badge: "bg-amber-100 text-amber-700",
+      color: "#b45309", // amber-700
+      lightColor: "#fef3c7",
+      gradient: "from-amber-50 to-amber-100",
+    },
+    [EstadoConductor.incapacidad]: {
+      bg: "bg-red-100 hover:bg-red-200",
+      text: "text-red-700",
+      border: "border-red-200",
+      dot: "bg-red-500",
+      badge: "bg-red-100 text-red-700",
+      color: "#dc2626", // red-700
+      lightColor: "#fee2e2",
+      gradient: "from-red-50 to-red-100",
+    },
+    [EstadoConductor.desvinculado]: {
+      bg: "bg-gray-100 hover:bg-gray-200",
+      text: "text-gray-700",
+      border: "border-gray-200",
+      dot: "bg-gray-500",
+      badge: "bg-gray-100 text-gray-700",
+      color: "#374151", // gray-700
+      lightColor: "#f3f4f6",
+      gradient: "from-gray-50 to-gray-100",
+    },
+  };
+
+  return colorMap[estado] || colorMap[EstadoConductor.disponible];
 };
 
 export const getEstadoLabel = (estado: EstadoConductor): string => {
@@ -384,7 +378,6 @@ interface ConductorContextType {
   error: string | null;
   validationErrors: ValidationError[] | null;
   procesamiento: Procesamiento;
-  camposEditables: String[];
   documentosRequeridos: any[];
   setProcesamiento: Dispatch<SetStateAction<Procesamiento>>;
 
@@ -457,7 +450,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentConductor, setCurrentConductor] = useState<Conductor | null>(
     null,
   );
-  const [camposEditables, setCamposEditables] = useState<String[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<
@@ -1039,8 +1031,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
             count: prevState.count + 1,
           };
 
-          console.log("Nuevo estado de conductores:", newState);
-
           return newState;
         });
 
@@ -1085,7 +1075,10 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       };
 
-      const handleConductorActualizado = (data: Conductor) => {
+      // ✅ VERSIÓN ALTERNATIVA MÁS EXPLÍCITA
+      const handleConductorActualizado = (data: any) => {
+        console.log('Datos recibidos del conductor actualizado:', data);
+
         setSocketEventLogs((prev) => [
           ...prev,
           {
@@ -1095,24 +1088,104 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         ]);
 
-        // ✅ ACTUALIZAR EL CONDUCTOR EN EL LISTADO
+        if (!data || !data.conductor) {
+          console.error('Estructura de datos inválida:', data);
+          addToast({
+            title: "Error",
+            description: "Error en la estructura de datos recibida",
+            color: "danger",
+          });
+          return;
+        }
+
+        const conductorActualizado = data.conductor;
+        const documentosNuevos = data.documentos || [];
+        const tipoProcesamiento = data.procesamiento || 'manual';
+
+        // ✅ PROCESO DE REEMPLAZO MÁS DETALLADO
+        const documentosExistentes = conductorActualizado.documentos || [];
+        const documentosFinales = [...documentosExistentes]; // Copia de documentos existentes
+
+        // Para cada documento nuevo, reemplazar o agregar
+        documentosNuevos.forEach((docNuevo : Documento) => {
+          // Buscar índice del documento existente con la misma categoría
+          const indiceExistente = documentosFinales.findIndex(docExistente =>
+            docExistente.categoria === docNuevo.categoria
+          );
+
+          if (indiceExistente !== -1) {
+            // ✅ REEMPLAZAR: Documento con esa categoría ya existe
+            console.log(`🔄 Reemplazando documento ${docNuevo.categoria}:`, {
+              documentoAnterior: documentosFinales[indiceExistente].id,
+              documentoNuevo: docNuevo.id
+            });
+            documentosFinales[indiceExistente] = docNuevo;
+          } else {
+            // ✅ AGREGAR: Nueva categoría
+            console.log(`➕ Agregando nuevo documento ${docNuevo.categoria}:`, docNuevo.id);
+            documentosFinales.push(docNuevo);
+          }
+        });
+
+        // ✅ CONDUCTOR COMPLETO
+        const conductorCompleto = {
+          ...conductorActualizado,
+          documentos: documentosFinales
+        };
+
+        // ✅ ACTUALIZAR ESTADOS
         setConductoresState((prevState) => ({
           ...prevState,
           data: prevState.data.map((conductor) =>
-            conductor.id === data.id ? data : conductor,
+            conductor.id === conductorCompleto.id ? conductorCompleto : conductor
           ),
         }));
 
-        // ✅ ACTUALIZAR EL CONDUCTOR ACTUAL SI COINCIDE
-        if (currentConductor && currentConductor.id === data.id) {
-          setCurrentConductor(data);
+        if (currentConductor && currentConductor.id === conductorCompleto.id) {
+          setCurrentConductor(conductorCompleto);
         }
 
-        addToast({
-          title: "Conductor Actualizado",
-          description: `Se ha actualizado la información del conductor: ${data.nombre} ${data.apellido}`,
-          color: "primary",
-        });
+        // ✅ NOTIFICACIONES CON INFORMACIÓN DE REEMPLAZO
+        const nombreCompleto = `${conductorCompleto.nombre} ${conductorCompleto.apellido}`;
+
+        if (tipoProcesamiento === 'ministral') {
+          addToast({
+            title: "✨ Actualización con IA Completada",
+            description: `${nombreCompleto} ha sido actualizado automáticamente`,
+            color: "primary",
+          });
+
+          if (documentosNuevos.length > 0) {
+            const categorias = documentosNuevos.map((doc : Documento) => doc.categoria);
+            const categoriasReemplazadas = categorias.filter((cat : string) =>
+              documentosExistentes.some((existente : Documento) => existente.categoria === cat)
+            );
+            const categoriasAgregadas = categorias.filter((cat : string) =>
+              !documentosExistentes.some((existente : Documento) => existente.categoria === cat)
+            );
+
+            let descripcion = '';
+            if (categoriasReemplazadas.length > 0 && categoriasAgregadas.length > 0) {
+              descripcion = `Reemplazadas: ${categoriasReemplazadas.join(', ')} | Agregadas: ${categoriasAgregadas.join(', ')}`;
+            } else if (categoriasReemplazadas.length > 0) {
+              descripcion = `Categorías reemplazadas: ${categoriasReemplazadas.join(', ')}`;
+            } else {
+              descripcion = `Categorías agregadas: ${categoriasAgregadas.join(', ')}`;
+            }
+
+            addToast({
+              title: "📄 Documentos Procesados",
+              description: descripcion,
+              color: "success",
+            });
+          }
+        } else {
+          addToast({
+            title: "Conductor Actualizado",
+            description: `${nombreCompleto} ha sido actualizado exitosamente`,
+            color: "primary",
+          });
+        }
       };
 
       // ✅ Manejador para conductores eliminados (opcional)
@@ -1253,7 +1326,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
 
     procesamiento,
     setProcesamiento,
-    camposEditables,
 
     // Propiedades para Socket.IO
     socketConnected,

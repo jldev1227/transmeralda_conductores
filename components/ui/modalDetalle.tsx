@@ -26,6 +26,7 @@ import {
   Eye,
   User,
   Briefcase,
+  Clipboard,
 } from "lucide-react";
 import { Image } from "@heroui/image";
 
@@ -36,6 +37,7 @@ import {
   getEstadoLabel,
 } from "@/context/ConductorContext";
 import { apiClient } from "@/config/apiClient";
+import RegistroModificaciones from "./registroModificaciones";
 
 interface ModalDetalleConductorProps {
   isOpen: boolean;
@@ -178,13 +180,13 @@ const ModalDetalleConductor: React.FC<ModalDetalleConductorProps> = ({
   ): {
     msg: string;
     color:
-      | "default"
-      | "danger"
-      | "warning"
-      | "success"
-      | "primary"
-      | "secondary"
-      | undefined;
+    | "default"
+    | "danger"
+    | "warning"
+    | "success"
+    | "primary"
+    | "secondary"
+    | undefined;
   } => {
     if (!fecha) {
       return { msg: "Sin vigencia", color: "default" };
@@ -483,6 +485,11 @@ const ModalDetalleConductor: React.FC<ModalDetalleConductorProps> = ({
                                     value:
                                       conductor.direccion || "No registrada",
                                   },
+                                  {
+                                    label: "Tipo Sangre",
+                                    value:
+                                      conductor.tipo_sangre || "No registrada",
+                                  },
                                 ].map((item, index) => (
                                   <div
                                     key={index}
@@ -692,58 +699,10 @@ const ModalDetalleConductor: React.FC<ModalDetalleConductorProps> = ({
                               </div>
                             </CardBody>
                           </Card>
+                        </div>
 
-                          {/* Actividad en el sistema */}
-                          <Card className="shadow-sm">
-                            <CardBody className="p-5">
-                              <h4 className="text-lg font-semibold mb-4 flex items-center text-gray-900">
-                                <div className="p-2 bg-gray-100 rounded-lg mr-3">
-                                  <Clock className="h-4 w-4 text-gray-600" />
-                                </div>
-                                Actividad en el Sistema
-                              </h4>
-                              <div className="space-y-3">
-                                {[
-                                  {
-                                    label: "Último acceso",
-                                    value: conductor.ultimo_acceso
-                                      ? new Date(
-                                          conductor.ultimo_acceso,
-                                        ).toLocaleString("es-CO")
-                                      : "Nunca ha accedido",
-                                  },
-                                  {
-                                    label: "Creado el",
-                                    value: conductor.createdAt
-                                      ? new Date(
-                                          conductor.createdAt,
-                                        ).toLocaleString("es-CO")
-                                      : "No disponible",
-                                  },
-                                  {
-                                    label: "Actualizado",
-                                    value: conductor.updatedAt
-                                      ? new Date(
-                                          conductor.updatedAt,
-                                        ).toLocaleString("es-CO")
-                                      : "No disponible",
-                                  },
-                                ].map((item, index) => (
-                                  <div
-                                    key={index}
-                                    className="flex items-start justify-between py-2 border-b border-gray-100 last:border-b-0"
-                                  >
-                                    <span className="text-sm font-medium text-gray-600">
-                                      {item.label}:
-                                    </span>
-                                    <span className="text-sm text-gray-900 font-medium text-right">
-                                      {item.value}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </CardBody>
-                          </Card>
+                        <div className="col-span-2">
+                          <RegistroModificaciones conductor={conductor} />
                         </div>
                       </div>
                     </div>
@@ -760,7 +719,7 @@ const ModalDetalleConductor: React.FC<ModalDetalleConductorProps> = ({
 
                         {documentosAgrupadosOrdenados &&
                           Object.keys(documentosAgrupadosOrdenados).length ===
-                            0 && (
+                          0 && (
                             <div className="text-center py-12">
                               <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                                 <FileText className="h-8 w-8 text-gray-400" />
@@ -885,14 +844,7 @@ const ModalDetalleConductor: React.FC<ModalDetalleConductorProps> = ({
               </div>
             </ModalBody>
 
-            <ModalFooter className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="flex items-center text-sm text-gray-500">
-                <Clock className="h-4 w-4 mr-2" />
-                Última actualización:{" "}
-                {conductor.updatedAt
-                  ? new Date(conductor.updatedAt).toLocaleString("es-CO")
-                  : "No disponible"}
-              </div>
+            <ModalFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200">
               <div className="flex space-x-3">
                 <Button
                   className="font-medium"
