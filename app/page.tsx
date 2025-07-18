@@ -626,7 +626,7 @@ export default function GestionConductores() {
 
       // ✅ CORREGIR LA URL - AGREGAR /estadisticas AL FINAL
       const response = await apiClient.get(
-        `/api/conductores/estadisticas?${params.toString()}`,
+        `/api/conductores/estadisticas/general?${params.toString()}`,
       );
 
       if (response.data.success) {
