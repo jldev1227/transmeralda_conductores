@@ -22,7 +22,6 @@ import {
   Conductor,
   EstadoConductor,
   initialProcesamientoState,
-  PermisosConductor,
   useConductor,
 } from "@/context/ConductorContext";
 
@@ -119,7 +118,9 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
   };
 
   // ✅ FUNCIÓN para detectar si es SOLO actualización de documentos
-  const esSoloActualizacionDocumentos = (conductor: Conductor | null): boolean => {
+  const esSoloActualizacionDocumentos = (
+    conductor: Conductor | null,
+  ): boolean => {
     if (!conductor) return false;
 
     // Es solo actualización de documentos si es un conductor de planta completo
@@ -165,14 +166,19 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
         setModoCreacion("ia"); // Usar interfaz de IA/documentos
 
         // Auto-completar documentos existentes si los hay
-        if (conductorEditar.documentos && Array.isArray(conductorEditar.documentos)) {
+        if (
+          conductorEditar.documentos &&
+          Array.isArray(conductorEditar.documentos)
+        ) {
           const documentosExistentes: Record<string, DocumentoState> = {};
 
           conductorEditar.documentos.forEach((doc) => {
             if (doc.categoria) {
               documentosExistentes[doc.categoria] = {
                 existente: doc,
-                fecha_vigencia: doc.fecha_vigencia ? new Date(doc.fecha_vigencia) : undefined,
+                fecha_vigencia: doc.fecha_vigencia
+                  ? new Date(doc.fecha_vigencia)
+                  : undefined,
                 uploadedAt: new Date(doc.upload_date || Date.now()),
                 esNuevo: false,
               };
@@ -231,20 +237,27 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
 
     if (conductorEditar && esConductorDePlanta(conductorEditar)) {
       // Mantener documentos existentes para conductores de planta
-      if (conductorEditar.documentos && Array.isArray(conductorEditar.documentos)) {
+      if (
+        conductorEditar.documentos &&
+        Array.isArray(conductorEditar.documentos)
+      ) {
         conductorEditar.documentos.forEach((doc) => {
           if (doc.categoria) {
             documentosAPreservar[doc.categoria] = {
               existente: doc,
-              fecha_vigencia: doc.fecha_vigencia ? new Date(doc.fecha_vigencia) : undefined,
+              fecha_vigencia: doc.fecha_vigencia
+                ? new Date(doc.fecha_vigencia)
+                : undefined,
               uploadedAt: new Date(doc.upload_date || Date.now()),
               esNuevo: false,
             };
           }
         });
 
-        console.log(`📄 Preservando ${Object.keys(documentosAPreservar).length} documentos para conductor de planta:`,
-          Object.keys(documentosAPreservar));
+        console.log(
+          `📄 Preservando ${Object.keys(documentosAPreservar).length} documentos para conductor de planta:`,
+          Object.keys(documentosAPreservar),
+        );
       }
     }
 
@@ -292,12 +305,15 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
   const validateRequiredDocuments = () => {
     // ✅ Para actualización, no todos los documentos son requeridos
     const requiredDocs = conductorEditar
-      ? documentTypesIA.filter(doc => doc.key === "CEDULA" || doc.key === "LICENCIA") // Solo requerir documentos clave para actualización
-      : documentTypesIA.filter(doc => doc.required); // Todos los requeridos para creación
+      ? documentTypesIA.filter(
+          (doc) => doc.key === "CEDULA" || doc.key === "LICENCIA",
+        ) // Solo requerir documentos clave para actualización
+      : documentTypesIA.filter((doc) => doc.required); // Todos los requeridos para creación
 
     return requiredDocs
       .filter((doc) => {
         const documento = documentos[doc.key];
+
         return !(documento && (documento.file || documento.existente));
       })
       .map((doc) => doc.label);
@@ -340,18 +356,24 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
             description: `Faltan: ${missingDocs.join(", ")}`,
             color: "danger",
           });
+
           return;
         }
 
         // ✅ Verificar si hay al menos un documento nuevo para actualización
         if (conductorEditar) {
-          const hayDocumentosNuevos = Object.values(documentos).some(doc => doc.file);
+          const hayDocumentosNuevos = Object.values(documentos).some(
+            (doc) => doc.file,
+          );
+
           if (!hayDocumentosNuevos) {
             addToast({
               title: "Sin cambios",
-              description: "Debe subir al menos un documento nuevo para actualizar",
+              description:
+                "Debe subir al menos un documento nuevo para actualizar",
               color: "warning",
             });
+
             return;
           }
         }
@@ -432,7 +454,9 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
   const handleDocumentRemove = (docKey: string) => {
     setDocumentos((prev) => {
       const newDocs = { ...prev };
+
       delete newDocs[docKey];
+
       return newDocs;
     });
   };
@@ -448,8 +472,10 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
       if (esSoloActualizacionDocumentos(conductorEditar)) {
         return "Actualizar Documentos del Conductor";
       }
+
       return "Actualizar Conductor";
     }
+
     return titulo;
   };
 
@@ -459,8 +485,10 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
       if (esSoloActualizacionDocumentos(conductorEditar)) {
         return "Actualiza los documentos del conductor. Los datos básicos no se modificarán ya que es un conductor de planta.";
       }
+
       return "Actualiza los documentos y datos del conductor. La IA procesará los cambios y actualizará la información.";
     }
+
     return "Una vez cargados los documentos requeridos, la IA extraerá los datos y registrará el conductor automáticamente.";
   };
 
@@ -514,10 +542,11 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div
-                                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${modoCreacion === "ia"
-                                  ? "border-blue-500 bg-blue-50"
-                                  : "border-gray-200 hover:border-gray-300"
-                                  }`}
+                                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                  modoCreacion === "ia"
+                                    ? "border-blue-500 bg-blue-50"
+                                    : "border-gray-200 hover:border-gray-300"
+                                }`}
                                 role="button"
                                 onClick={() => setModoCreacion("ia")}
                               >
@@ -544,10 +573,11 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                               </div>
 
                               <div
-                                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${modoCreacion === "tradicional"
-                                  ? "border-emerald-500 bg-emerald-50"
-                                  : "border-gray-200 hover:border-gray-300"
-                                  }`}
+                                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                  modoCreacion === "tradicional"
+                                    ? "border-emerald-500 bg-emerald-50"
+                                    : "border-gray-200 hover:border-gray-300"
+                                }`}
                                 role="button"
                                 onClick={() => setModoCreacion("tradicional")}
                               >
@@ -579,7 +609,9 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                         <div className="flex items-center gap-2">
                           <Bot className="h-5 w-5 text-blue-600" />
                           <h3 className="text-lg font-semibold">
-                            {conductorEditar ? "Actualizando con IA" : "Procesamiento con IA"}
+                            {conductorEditar
+                              ? "Actualizando con IA"
+                              : "Procesamiento con IA"}
                           </h3>
                         </div>
                       </CardHeader>
@@ -613,7 +645,9 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                           <Bot className="h-12 w-12 text-green-600" />
                         </div>
                         <h4 className="font-semibold text-lg text-green-800 mb-2">
-                          {conductorEditar ? "Actualización Completada" : "Procesamiento Completado"}
+                          {conductorEditar
+                            ? "Actualización Completada"
+                            : "Procesamiento Completado"}
                         </h4>
                         <p className="text-gray-600">
                           {conductorEditar
@@ -626,24 +660,27 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                 )}
 
                 {/* ✅ MENSAJE PARA CONDUCTORES DE PLANTA */}
-                {conductorEditar && esSoloActualizacionDocumentos(conductorEditar) && (
-                  <Card>
-                    <CardBody>
-                      <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Bot className="h-5 w-5 text-amber-600" />
-                          <h4 className="font-semibold text-amber-800">
-                            Conductor de Planta
-                          </h4>
+                {conductorEditar &&
+                  esSoloActualizacionDocumentos(conductorEditar) && (
+                    <Card>
+                      <CardBody>
+                        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Bot className="h-5 w-5 text-amber-600" />
+                            <h4 className="font-semibold text-amber-800">
+                              Conductor de Planta
+                            </h4>
+                          </div>
+                          <p className="text-sm text-amber-700">
+                            Este conductor es de planta (posee salario base,
+                            fecha de ingreso, término de contrato y fecha de
+                            terminación). Solo se actualizarán los documentos,
+                            los datos básicos permanecerán sin cambios.
+                          </p>
                         </div>
-                        <p className="text-sm text-amber-700">
-                          Este conductor es de planta (posee salario base, fecha de ingreso, término de contrato y fecha de terminación).
-                          Solo se actualizarán los documentos, los datos básicos permanecerán sin cambios.
-                        </p>
-                      </div>
-                    </CardBody>
-                  </Card>
-                )}
+                      </CardBody>
+                    </Card>
+                  )}
 
                 {/* ✅ CARGA DE DOCUMENTOS PARA IA */}
                 {modoCreacion === "ia" &&
@@ -664,7 +701,9 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                           <p className="text-sm text-blue-800">
                             <strong>
-                              {conductorEditar ? "📄 Actualización:" : "ℹ️ Proceso automático:"}
+                              {conductorEditar
+                                ? "📄 Actualización:"
+                                : "ℹ️ Proceso automático:"}
                             </strong>{" "}
                             {getMensajeIA()}
                           </p>
@@ -704,8 +743,12 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                                 <SimpleDocumentUploader
                                   documentKey={docType.key}
                                   errores={erroresDocumentos}
-                                  existingDocument={documento?.existente || null}
-                                  fecha_vigencia={documento?.fecha_vigencia || null}
+                                  existingDocument={
+                                    documento?.existente || null
+                                  }
+                                  fecha_vigencia={
+                                    documento?.fecha_vigencia || null
+                                  }
                                   file={documento?.file || null}
                                   isExisting={!!documento?.existente}
                                   label=""
@@ -722,99 +765,102 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                   )}
 
                 {/* ✅ FORMULARIO TRADICIONAL (NO para conductores de planta) */}
-                {modoCreacion === "tradicional" && !esSoloActualizacionDocumentos(conductorEditar) && (
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="h-5 w-5 text-emerald-600" />
-                        <h4 className="font-semibold">Información Básica</h4>
-                      </div>
-                    </CardHeader>
-                    <CardBody>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          isRequired
-                          errorMessage={
-                            errores.nombre ? "El nombre es requerido" : ""
-                          }
-                          isInvalid={errores.nombre}
-                          label="Nombres"
-                          name="nombre"
-                          placeholder="Ingrese nombres"
-                          value={formData.nombre || ""}
-                          onChange={handleChange}
-                        />
+                {modoCreacion === "tradicional" &&
+                  !esSoloActualizacionDocumentos(conductorEditar) && (
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="h-5 w-5 text-emerald-600" />
+                          <h4 className="font-semibold">Información Básica</h4>
+                        </div>
+                      </CardHeader>
+                      <CardBody>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Input
+                            isRequired
+                            errorMessage={
+                              errores.nombre ? "El nombre es requerido" : ""
+                            }
+                            isInvalid={errores.nombre}
+                            label="Nombres"
+                            name="nombre"
+                            placeholder="Ingrese nombres"
+                            value={formData.nombre || ""}
+                            onChange={handleChange}
+                          />
 
-                        <Input
-                          isRequired
-                          errorMessage={
-                            errores.apellido ? "El apellido es requerido" : ""
-                          }
-                          isInvalid={errores.apellido}
-                          label="Apellidos"
-                          name="apellido"
-                          placeholder="Ingrese apellidos"
-                          value={formData.apellido || ""}
-                          onChange={handleChange}
-                        />
+                          <Input
+                            isRequired
+                            errorMessage={
+                              errores.apellido ? "El apellido es requerido" : ""
+                            }
+                            isInvalid={errores.apellido}
+                            label="Apellidos"
+                            name="apellido"
+                            placeholder="Ingrese apellidos"
+                            value={formData.apellido || ""}
+                            onChange={handleChange}
+                          />
 
-                        <Select
-                          isRequired
-                          defaultSelectedKeys={
-                            formData.tipo_identificacion
-                              ? [formData.tipo_identificacion]
-                              : []
-                          }
-                          label="Tipo de Identificación"
-                          name="tipo_identificacion"
-                          placeholder="Seleccione tipo"
-                          onChange={handleChange}
-                        >
-                          {tiposIdentificacion.map((tipo) => (
-                            <SelectItem key={tipo.key}>{tipo.label}</SelectItem>
-                          ))}
-                        </Select>
+                          <Select
+                            isRequired
+                            defaultSelectedKeys={
+                              formData.tipo_identificacion
+                                ? [formData.tipo_identificacion]
+                                : []
+                            }
+                            label="Tipo de Identificación"
+                            name="tipo_identificacion"
+                            placeholder="Seleccione tipo"
+                            onChange={handleChange}
+                          >
+                            {tiposIdentificacion.map((tipo) => (
+                              <SelectItem key={tipo.key}>
+                                {tipo.label}
+                              </SelectItem>
+                            ))}
+                          </Select>
 
-                        <Input
-                          isRequired
-                          errorMessage={
-                            errores.numero_identificacion
-                              ? "La identificación es requerida"
-                              : ""
-                          }
-                          isInvalid={errores.numero_identificacion}
-                          label="Número de Identificación"
-                          name="numero_identificacion"
-                          placeholder="Ingrese número"
-                          value={formData.numero_identificacion || ""}
-                          onChange={handleChange}
-                        />
+                          <Input
+                            isRequired
+                            errorMessage={
+                              errores.numero_identificacion
+                                ? "La identificación es requerida"
+                                : ""
+                            }
+                            isInvalid={errores.numero_identificacion}
+                            label="Número de Identificación"
+                            name="numero_identificacion"
+                            placeholder="Ingrese número"
+                            value={formData.numero_identificacion || ""}
+                            onChange={handleChange}
+                          />
 
-                        <Input
-                          isRequired
-                          errorMessage={
-                            errores.telefono ? "El teléfono es requerido" : ""
-                          }
-                          isInvalid={errores.telefono}
-                          label="Teléfono"
-                          name="telefono"
-                          placeholder="Ingrese teléfono"
-                          value={formData.telefono || ""}
-                          onChange={handleChange}
-                        />
+                          <Input
+                            isRequired
+                            errorMessage={
+                              errores.telefono ? "El teléfono es requerido" : ""
+                            }
+                            isInvalid={errores.telefono}
+                            label="Teléfono"
+                            name="telefono"
+                            placeholder="Ingrese teléfono"
+                            value={formData.telefono || ""}
+                            onChange={handleChange}
+                          />
 
-                        <Input
-                          label="Email"
-                          name="email"
-                          placeholder="Ingrese email"
-                          type="email"
-                          value={formData.email || ""}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    </CardBody>
-                  </Card>
-                )}
+                          <Input
+                            label="Email"
+                            name="email"
+                            placeholder="Ingrese email"
+                            type="email"
+                            value={formData.email || ""}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </CardBody>
+                    </Card>
+                  )}
               </div>
             </ModalBody>
 
@@ -836,15 +882,15 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                     {/* Botón Reiniciar para errores o cuando hay procesamiento */}
                     {(procesamiento.estado === "error" ||
                       procesamiento.sessionId) && (
-                        <Button
-                          color="warning"
-                          isDisabled={loading}
-                          variant="flat"
-                          onPress={resetForm}
-                        >
-                          Reiniciar
-                        </Button>
-                      )}
+                      <Button
+                        color="warning"
+                        isDisabled={loading}
+                        variant="flat"
+                        onPress={resetForm}
+                      >
+                        Reiniciar
+                      </Button>
+                    )}
 
                     {/* Botón principal - solo mostrar si no hay procesamiento activo */}
                     {!procesamiento.sessionId && (

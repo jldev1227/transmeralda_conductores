@@ -7,7 +7,6 @@ import {
   SearchIcon,
   SquareCheck,
   UserIcon,
-  Filter,
   SlidersHorizontal,
   Grid3X3,
   List,
@@ -17,8 +16,14 @@ import { CheckboxGroup, Checkbox } from "@heroui/checkbox";
 import { addToast } from "@heroui/toast";
 import { Chip } from "@heroui/chip";
 import { Card, CardBody } from "@heroui/card";
-import { Drawer } from "@heroui/drawer";
-import { Badge } from "@heroui/badge";
+import {
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerHeader,
+} from "@heroui/drawer";
+import { Input } from "@heroui/input";
+
 import {
   Conductor,
   useConductor,
@@ -35,7 +40,6 @@ import { apiClient } from "@/config/apiClient";
 import ConductorCard from "@/components/ui/conductorCard";
 import { EstadosConductores } from "@/components/ui/estadosConductores";
 import { FilterOptions } from "@/types";
-import { Input } from "@heroui/input";
 
 // ✅ TIPOS Y CONSTANTES MEJORADAS
 type FilterKey = "estados" | "sedes" | "tiposIdentificacion" | "tiposContrato";
@@ -69,7 +73,7 @@ export default function GestionConductores() {
 
   // ✅ ESTADOS PRINCIPALES
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+  const [sortDescriptor] = useState<SortDescriptor>({
     column: "conductor",
     direction: "ASC",
   });
@@ -84,33 +88,38 @@ export default function GestionConductores() {
 
   // ✅ ESTADOS DE UI MEJORADOS
   const isMobile = useMediaQuery({ maxWidth: 1024 });
-  const isTablet = useMediaQuery({ maxWidth: 1280, minWidth: 768 });
   const [isSelect, setIsSelect] = useState<boolean>(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [showQuickFilters, setShowQuickFilters] = useState(true);
 
   // ✅ ESTADOS DE MODALES
   const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
-  const [selectedConductorId, setSelectedConductorId] = useState<string | null>(null);
+  const [selectedConductorId, setSelectedConductorId] = useState<string | null>(
+    null,
+  );
   const [modalFormOpen, setModalFormOpen] = useState(false);
-  const [conductorParaEditar, setConductorParaEditar] = useState<Conductor | null>(null);
+  const [conductorParaEditar, setConductorParaEditar] =
+    useState<Conductor | null>(null);
 
   // ✅ FUNCIONES DE IA (mantenidas del código original)
-  const crearConductorConIA = async (conductorData: Conductor): Promise<void> => {
+  const crearConductorConIA = async (
+    conductorData: Conductor,
+  ): Promise<void> => {
     try {
       setLoading(true);
       await crearConductorConAI(conductorData);
       addToast({
         title: "Procesamiento iniciado",
-        description: "El conductor está siendo procesado con IA. Recibirás notificaciones del progreso.",
+        description:
+          "El conductor está siendo procesado con IA. Recibirás notificaciones del progreso.",
         color: "success",
       });
     } catch (error: any) {
       console.error("Error al crear conductor con IA:", error);
       addToast({
         title: "Error al procesar con IA",
-        description: error.message || "Error al iniciar el procesamiento con IA",
+        description:
+          error.message || "Error al iniciar el procesamiento con IA",
         color: "danger",
       });
       throw error;
@@ -119,7 +128,9 @@ export default function GestionConductores() {
     }
   };
 
-  const actualizarConductorConIA = async (conductorData: Conductor): Promise<void> => {
+  const actualizarConductorConIA = async (
+    conductorData: Conductor,
+  ): Promise<void> => {
     try {
       setLoading(true);
       if (!conductorParaEditar?.id) {
@@ -128,14 +139,17 @@ export default function GestionConductores() {
       await actualizarConductorConAI(conductorParaEditar.id, conductorData);
       addToast({
         title: "Procesamiento de actualización iniciado",
-        description: "El conductor está siendo actualizado con IA. Recibirás notificaciones del progreso.",
+        description:
+          "El conductor está siendo actualizado con IA. Recibirás notificaciones del progreso.",
         color: "success",
       });
     } catch (error: any) {
       console.error("Error al actualizar conductor con IA:", error);
       addToast({
         title: "Error al procesar actualización con IA",
-        description: error.message || "Error al iniciar el procesamiento de actualización con IA",
+        description:
+          error.message ||
+          "Error al iniciar el procesamiento de actualización con IA",
         color: "danger",
       });
       throw error;
@@ -144,17 +158,14 @@ export default function GestionConductores() {
     }
   };
 
-  const crearConductorTradicional = async (conductorData: CrearConductorRequest): Promise<void> => {
+  const crearConductorTradicional = async (
+    conductorData: CrearConductorRequest,
+  ): Promise<void> => {
     try {
       setLoading(true);
       await crearConductor(conductorData);
       cerrarModalForm();
       await cargarConductores(conductoresState.currentPage);
-      addToast({
-        title: "Conductor creado",
-        description: "El conductor ha sido registrado exitosamente",
-        color: "success",
-      });
     } catch (error: any) {
       console.error("Error al crear conductor tradicional:", error);
       throw error;
@@ -164,157 +175,147 @@ export default function GestionConductores() {
   };
 
   // ✅ FUNCIONES DE API (mantenidas del código original pero simplificadas)
-  const crearConductorConAI = async (conductorData: Conductor): Promise<void> => {
+  const crearConductorConAI = async (
+    conductorData: Conductor,
+  ): Promise<void> => {
     const formData = new FormData();
 
     Object.keys(conductorData).forEach((key) => {
-      if (key !== "documentos" && conductorData[key as keyof Conductor] !== undefined) {
+      if (
+        key !== "documentos" &&
+        conductorData[key as keyof Conductor] !== undefined
+      ) {
         formData.append(key, String(conductorData[key as keyof Conductor]));
       }
     });
 
     if (conductorData.documentos) {
       const categorias: string[] = [];
-      Object.entries(conductorData.documentos).forEach(([categoria, documento]) => {
-        if ((documento as any)?.file) {
-          formData.append("files", (documento as any).file);
-          categorias.push(categoria);
-        }
-      });
+
+      Object.entries(conductorData.documentos).forEach(
+        ([categoria, documento]) => {
+          if ((documento as any)?.file) {
+            formData.append("files", (documento as any).file);
+            categorias.push(categoria);
+          }
+        },
+      );
       formData.append("categorias", JSON.stringify(categorias));
     }
 
-    const response = await apiClient.post("/api/conductores/crear-con-ia", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        "socket-id": `socket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    const response = await apiClient.post(
+      "/api/conductores/crear-con-ia",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          "socket-id": `socket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        },
       },
-    });
+    );
 
     if (!response.data.success) {
       throw new Error(response.data.message || "Error al procesar con IA");
     }
+
     return response.data;
   };
 
-  const actualizarConductorConAI = async (conductorId: string, conductorData: Conductor): Promise<void> => {
+  const actualizarConductorConAI = async (
+    conductorId: string,
+    conductorData: Conductor,
+  ): Promise<void> => {
     const formData = new FormData();
 
     Object.keys(conductorData).forEach((key) => {
-      if (key !== "documentos" && key !== "id" && conductorData[key as keyof Conductor] !== undefined) {
+      if (
+        key !== "documentos" &&
+        key !== "id" &&
+        conductorData[key as keyof Conductor] !== undefined
+      ) {
         formData.append(key, String(conductorData[key as keyof Conductor]));
       }
     });
 
     if (conductorData.documentos) {
       const categorias: string[] = [];
-      Object.entries(conductorData.documentos).forEach(([categoria, documento]) => {
-        if ((documento as any)?.file) {
-          formData.append("files", (documento as any).file);
-          categorias.push(categoria);
-        } else if ((documento as any)?.s3_key) {
-          formData.append(`documento_existente_${categoria}`, (documento as any).s3_key);
-        }
-      });
+
+      Object.entries(conductorData.documentos).forEach(
+        ([categoria, documento]) => {
+          if ((documento as any)?.file) {
+            formData.append("files", (documento as any).file);
+            categorias.push(categoria);
+          } else if ((documento as any)?.s3_key) {
+            formData.append(
+              `documento_existente_${categoria}`,
+              (documento as any).s3_key,
+            );
+          }
+        },
+      );
       if (categorias.length > 0) {
         formData.append("categorias", JSON.stringify(categorias));
       }
     }
 
-    const response = await apiClient.put(`/api/conductores/actualizar-con-ia/${conductorId}`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        "socket-id": `socket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    const response = await apiClient.put(
+      `/api/conductores/actualizar-con-ia/${conductorId}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          "socket-id": `socket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        },
       },
-    });
+    );
 
     if (!response.data.success) {
-      throw new Error(response.data.message || "Error al procesar actualización con IA");
+      throw new Error(
+        response.data.message || "Error al procesar actualización con IA",
+      );
     }
+
     return response.data;
   };
 
-  const quitarFiltroEstado = useCallback((estado: string) => {
-    const nuevosEstados = new Set(filtros.estados);
-    nuevosEstados.delete(estado);
+  // 3. ✅ CORREGIR LA FUNCIÓN filtrarPorEstado PARA USAR ESTADÍSTICAS
+  const filtrarPorEstado = useCallback(
+    (estado: EstadoConductor) => {
+      // ✅ CREAR UNA NUEVA COPIA DEL SET DE ESTADOS
+      const nuevosEstados = new Set(filtros.estados);
 
-    const nuevosFiltros = {
-      ...filtros,
-      estados: nuevosEstados,
-    };
+      // ✅ TOGGLE: agregar o quitar el estado
+      if (nuevosEstados.has(estado)) {
+        nuevosEstados.delete(estado);
+      } else {
+        nuevosEstados.add(estado);
+      }
 
-    setFiltros(nuevosFiltros);
-    cargarConductores(1, searchTerm, nuevosFiltros);
-  }, [filtros, searchTerm]);
+      // ✅ CREAR NUEVOS FILTROS
+      const nuevosFiltros = {
+        ...filtros,
+        estados: nuevosEstados,
+      };
 
-  const filtrarPorEstado = useCallback((estado: EstadoConductor) => {
-    console.log('🔍 Estado clickeado:', estado);
-    console.log('🔍 Estados actuales:', Array.from(filtros.estados));
+      // ✅ ACTUALIZAR ESTADO INMEDIATAMENTE
+      setFiltros(nuevosFiltros);
+    },
+    [filtros, searchTerm, sortDescriptor, setFiltros, addToast],
+  );
 
-    // ✅ CREAR UNA NUEVA COPIA DEL SET DE ESTADOS
-    const nuevosEstados = new Set(filtros.estados);
-
-    // ✅ TOGGLE: agregar o quitar el estado
-    if (nuevosEstados.has(estado)) {
-      console.log('🗑️ Removiendo estado:', estado);
-      nuevosEstados.delete(estado);
-    } else {
-      console.log('➕ Agregando estado:', estado);
-      nuevosEstados.add(estado);
+  // 4. ✅ CORREGIR EL useEffect PARA RECARGAR CONDUCTORES
+  useEffect(() => {
+    if (
+      filtros.estados.size === 0 &&
+      filtros.sedes.size === 0 &&
+      filtros.tiposContrato.size === 0 &&
+      filtros.tiposIdentificacion.size === 0 &&
+      !searchTerm
+    ) {
+      // ✅ NO HACER NADA SI NO HAY FILTROS (evitar carga inicial duplicada)
+      return;
     }
 
-    console.log('🔍 Nuevos estados:', Array.from(nuevosEstados));
-
-    // ✅ CREAR NUEVOS FILTROS
-    const nuevosFiltros = {
-      ...filtros,
-      estados: nuevosEstados,
-    };
-
-    console.log('🔍 Filtros completos:', nuevosFiltros);
-
-    // ✅ ACTUALIZAR ESTADO INMEDIATAMENTE
-    setFiltros(nuevosFiltros);
-
-    // ✅ CARGAR CONDUCTORES PERO SIN PASAR filtrosParam PARA QUE NO SOBRESCRIBA
-    const params: BusquedaParams = {
-      page: 1,
-      sort: sortDescriptor.column,
-      order: sortDescriptor.direction === "ASC" ? "ASC" : "DESC",
-    };
-
-    if (searchTerm) params.search = searchTerm;
-    if (nuevosFiltros.sedes.size > 0) params.sede_trabajo = Array.from(nuevosFiltros.sedes);
-    if (nuevosFiltros.tiposIdentificacion.size > 0) params.tipo_identificacion = Array.from(nuevosFiltros.tiposIdentificacion);
-    if (nuevosFiltros.tiposContrato.size > 0) params.tipo_contrato = Array.from(nuevosFiltros.tiposContrato);
-    if (nuevosFiltros.estados.size > 0) params.estado = Array.from(nuevosFiltros.estados);
-
-    // ✅ LLAMAR DIRECTAMENTE A fetchConductores SIN cargarConductores
-    setLoading(true);
-    fetchConductores(params)
-      .then(() => {
-        console.log('✅ Conductores cargados exitosamente');
-      })
-      .catch((error) => {
-        console.error("Error al cargar conductores:", error);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    // ✅ TOAST INFORMATIVO
-    const estadoLabel = FILTROS_CONFIG.estados.find(e => e.value === estado)?.label || estado;
-    const accion = nuevosEstados.has(estado) ? 'agregado' : 'removido';
-
-    addToast({
-      title: `Filtro ${accion}`,
-      description: `${estadoLabel} ${accion === 'agregado' ? 'agregado a' : 'removido de'} los filtros`,
-      color: accion === 'agregado' ? "primary" : "warning",
-      duration: 2000,
-    });
-  }, [filtros, searchTerm, sortDescriptor, setFiltros, fetchConductores, setLoading, addToast]);
-
-  useEffect(() => {
     const params: BusquedaParams = {
       page: 1,
       sort: sortDescriptor.column,
@@ -323,59 +324,62 @@ export default function GestionConductores() {
 
     if (searchTerm) params.search = searchTerm;
     if (filtros.sedes.size > 0) params.sede_trabajo = Array.from(filtros.sedes);
-    if (filtros.tiposIdentificacion.size > 0) params.tipo_identificacion = Array.from(filtros.tiposIdentificacion);
-    if (filtros.tiposContrato.size > 0) params.tipo_contrato = Array.from(filtros.tiposContrato);
+    if (filtros.tiposIdentificacion.size > 0)
+      params.tipo_identificacion = Array.from(filtros.tiposIdentificacion);
+    if (filtros.tiposContrato.size > 0)
+      params.tipo_contrato = Array.from(filtros.tiposContrato);
     if (filtros.estados.size > 0) params.estado = Array.from(filtros.estados);
 
-    console.log('🔄 useEffect - Recargando con filtros:', params);
-
     setLoading(true);
-    fetchConductores(params)
-      .finally(() => setLoading(false));
-  }, [filtros, searchTerm, sortDescriptor]); // ✅ Se ejecuta cuando cambien los filtros
+    fetchConductores(params).finally(() => setLoading(false));
+  }, [filtros, searchTerm, sortDescriptor]);
+
+  // 5. ✅ CORREGIR EL useEffect INICIAL
+  useEffect(() => {
+    // ✅ Cargar estadísticas y conductores iniciales
+    const cargarDatosIniciales = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([obtenerEstadisticasEstados(), cargarConductores(1)]);
+      } catch (error) {
+        console.error("Error al cargar datos iniciales:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatosIniciales();
+  }, []); // ✅ Solo ejecutar una vez al montar el componente
+
+  // ✅ NUEVO ESTADO PARA ESTADÍSTICAS
+  const [estadisticasEstados, setEstadisticasEstados] = useState({
+    estadisticas: [],
+    totalConductores: 0,
+    totalActivos: 0,
+    filtrosAplicados: {},
+  });
+
+  // 9. ✅ CORREGIR LA FUNCIÓN quitarFiltroEstado
+  const quitarFiltroEstado = useCallback(
+    (estado: string) => {
+      const nuevosEstados = new Set(filtros.estados);
+
+      nuevosEstados.delete(estado);
+
+      const nuevosFiltros = {
+        ...filtros,
+        estados: nuevosEstados,
+      };
+
+      setFiltros(nuevosFiltros);
+    },
+    [filtros, addToast],
+  );
 
   // ✅ FUNCIONES DE CARGA Y FILTROS MEJORADAS
   useEffect(() => {
     cargarConductores();
   }, []);
-
-  const cargarConductores = async (
-    page: number = 1,
-    searchTermParam?: string,
-    filtrosParam?: FilterOptions,
-  ) => {
-    setLoading(true);
-    try {
-      const currentSearchTerm = searchTermParam !== undefined ? searchTermParam : searchTerm;
-      const currentFiltros = filtrosParam !== undefined ? filtrosParam : filtros;
-
-      console.log('📡 Cargando conductores con filtros:', currentFiltros);
-
-      const params: BusquedaParams = {
-        page,
-        sort: sortDescriptor.column,
-        order: sortDescriptor.direction === "ASC" ? "ASC" : "DESC",
-      };
-
-      if (currentSearchTerm) params.search = currentSearchTerm;
-      if (currentFiltros.sedes.size > 0) params.sede_trabajo = Array.from(currentFiltros.sedes);
-      if (currentFiltros.tiposIdentificacion.size > 0) params.tipo_identificacion = Array.from(currentFiltros.tiposIdentificacion);
-      if (currentFiltros.tiposContrato.size > 0) params.tipo_contrato = Array.from(currentFiltros.tiposContrato);
-      if (currentFiltros.estados.size > 0) params.estado = Array.from(currentFiltros.estados);
-
-      console.log('📡 Parámetros enviados al backend:', params);
-
-      await fetchConductores(params);
-
-      // ✅ IMPORTANTE: Solo actualizar el estado si los parámetros están definidos
-      if (searchTermParam !== undefined) setSearchTerm(searchTermParam);
-
-    } catch (error) {
-      console.error("Error al cargar conductores:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // ✅ FUNCIONES DE UI MEJORADAS
   const handleSearch = async (termino: string) => {
@@ -399,18 +403,17 @@ export default function GestionConductores() {
       tiposContrato: new Set<string>(),
       estados: new Set<string>(),
     };
-    setSearchTerm("");
-    await cargarConductores(1, "", filtrosVacios);
-  };
 
-  const handleFilter = async (nuevosFiltros: FilterOptions) => {
-    await cargarConductores(1, undefined, nuevosFiltros);
+    setSearchTerm("");
+    setFiltros(filtrosVacios);
+    // ✅ NO llamar cargarConductores aquí, el useEffect se encargará
   };
 
   // ✅ MEMOIZACIÓN PARA OPTIMIZACIÓN
   const filtrosActivos = useMemo(() => {
     return {
-      total: Array.from(filtros.estados).length +
+      total:
+        Array.from(filtros.estados).length +
         Array.from(filtros.tiposContrato).length +
         Array.from(filtros.sedes).length +
         Array.from(filtros.tiposIdentificacion).length,
@@ -444,11 +447,6 @@ export default function GestionConductores() {
     setModalFormOpen(true);
   };
 
-  const abrirModalEditar = (conductor: Conductor) => {
-    setConductorParaEditar(conductor);
-    setModalFormOpen(true);
-  };
-
   const cerrarModalForm = () => {
     setModalFormOpen(false);
     setConductorParaEditar(null);
@@ -471,15 +469,22 @@ export default function GestionConductores() {
     const getLabel = (tipo: FilterKey, valor: string) => {
       switch (tipo) {
         case "estados":
-          return FILTROS_CONFIG.estados.find(e => e.value === valor)?.label || valor;
+          return (
+            FILTROS_CONFIG.estados.find((e) => e.value === valor)?.label ||
+            valor
+          );
         case "tiposContrato":
-          return FILTROS_CONFIG.tiposContrato.find(t => t.value === valor)?.label || valor;
+          return (
+            FILTROS_CONFIG.tiposContrato.find((t) => t.value === valor)
+              ?.label || valor
+          );
         default:
           return valor;
       }
     };
 
     const hayFiltros = Object.values(grupos).some((arr) => arr.length > 0);
+
     if (!hayFiltros && !searchTerm) return null;
 
     return (
@@ -495,7 +500,7 @@ export default function GestionConductores() {
                   handleSearch("");
                 }}
               >
-                Búsqueda: "{searchTerm}"
+                Búsqueda: ({searchTerm})
               </Chip>
             )}
 
@@ -519,8 +524,13 @@ export default function GestionConductores() {
                 variant="flat"
                 onClose={() => {
                   const nuevosContratos = new Set(filtros.tiposContrato);
+
                   nuevosContratos.delete(tipo);
-                  const nuevosFiltros = { ...filtros, tiposContrato: nuevosContratos };
+                  const nuevosFiltros = {
+                    ...filtros,
+                    tiposContrato: nuevosContratos,
+                  };
+
                   setFiltros(nuevosFiltros);
                   cargarConductores(1, searchTerm, nuevosFiltros);
                 }}
@@ -537,8 +547,13 @@ export default function GestionConductores() {
                 variant="flat"
                 onClose={() => {
                   const nuevosTipos = new Set(filtros.tiposIdentificacion);
+
                   nuevosTipos.delete(tipo);
-                  const nuevosFiltros = { ...filtros, tiposIdentificacion: nuevosTipos };
+                  const nuevosFiltros = {
+                    ...filtros,
+                    tiposIdentificacion: nuevosTipos,
+                  };
+
                   setFiltros(nuevosFiltros);
                   cargarConductores(1, searchTerm, nuevosFiltros);
                 }}
@@ -555,8 +570,10 @@ export default function GestionConductores() {
                 variant="flat"
                 onClose={() => {
                   const nuevasSedes = new Set(filtros.sedes);
+
                   nuevasSedes.delete(sede);
                   const nuevosFiltros = { ...filtros, sedes: nuevasSedes };
+
                   setFiltros(nuevosFiltros);
                   cargarConductores(1, searchTerm, nuevosFiltros);
                 }}
@@ -570,110 +587,206 @@ export default function GestionConductores() {
     );
   };
 
-  const crearFuncionFiltro = useCallback((filterKey: FilterKey) => {
-    return (valor: string) => {
-      const nuevosValores = new Set(filtros[filterKey]);
-      if (nuevosValores.has(valor)) {
-        nuevosValores.delete(valor);
-      } else {
-        nuevosValores.add(valor);
+  const obtenerEstadisticasEstados = async (
+    filtrosSinEstado?: Partial<BusquedaParams>,
+  ) => {
+    try {
+      const params = new URLSearchParams();
+
+      // ✅ AGREGAR FILTROS EXCEPTO ESTADO
+      if (searchTerm) params.append("search", searchTerm);
+      if (filtros.sedes.size > 0) {
+        params.append("sede_trabajo", Array.from(filtros.sedes).join(","));
+      }
+      if (filtros.tiposIdentificacion.size > 0) {
+        params.append(
+          "tipo_identificacion",
+          Array.from(filtros.tiposIdentificacion).join(","),
+        );
+      }
+      if (filtros.tiposContrato.size > 0) {
+        params.append(
+          "tipo_contrato",
+          Array.from(filtros.tiposContrato).join(","),
+        );
       }
 
-      const nuevosFiltros = {
-        ...filtros,
-        [filterKey]: nuevosValores,
+      // ✅ SOBRESCRIBIR CON FILTROS PERSONALIZADOS SI SE PROPORCIONAN
+      if (filtrosSinEstado) {
+        Object.entries(filtrosSinEstado).forEach(([key, value]) => {
+          if (value !== undefined && key !== "estado") {
+            if (Array.isArray(value)) {
+              params.set(key, value.join(","));
+            } else {
+              params.set(key, value.toString());
+            }
+          }
+        });
+      }
+
+      // ✅ CORREGIR LA URL - AGREGAR /estadisticas AL FINAL
+      const response = await apiClient.get(
+        `/api/conductores/estadisticas?${params.toString()}`,
+      );
+
+      if (response.data.success) {
+        setEstadisticasEstados(response.data.data);
+      }
+
+      return response.data.data;
+    } catch (error) {
+      console.error("Error al obtener estadísticas:", error);
+
+      // ✅ FALLBACK: usar datos actuales si falla la consulta
+      return {
+        estadisticas: [],
+        totalConductores: conductoresState.count,
+        totalActivos: 0,
+        filtrosAplicados: {},
+      };
+    }
+  };
+
+  // ✅ MODIFICAR LA FUNCIÓN cargarConductores PARA INCLUIR ESTADÍSTICAS
+  const cargarConductores = async (
+    page: number = 1,
+    searchTermParam?: string,
+    filtrosParam?: FilterOptions,
+  ) => {
+    setLoading(true);
+    try {
+      const currentSearchTerm =
+        searchTermParam !== undefined ? searchTermParam : searchTerm;
+      const currentFiltros =
+        filtrosParam !== undefined ? filtrosParam : filtros;
+
+      const params: BusquedaParams = {
+        page,
+        sort: sortDescriptor.column,
+        order: sortDescriptor.direction === "ASC" ? "ASC" : "DESC",
       };
 
-      setFiltros(nuevosFiltros);
-      cargarConductores(1, searchTerm, nuevosFiltros);
+      if (currentSearchTerm) params.search = currentSearchTerm;
+      if (currentFiltros.sedes.size > 0)
+        params.sede_trabajo = Array.from(currentFiltros.sedes);
+      if (currentFiltros.tiposIdentificacion.size > 0)
+        params.tipo_identificacion = Array.from(
+          currentFiltros.tiposIdentificacion,
+        );
+      if (currentFiltros.tiposContrato.size > 0)
+        params.tipo_contrato = Array.from(currentFiltros.tiposContrato);
+      if (currentFiltros.estados.size > 0)
+        params.estado = Array.from(currentFiltros.estados);
+
+      // ✅ EJECUTAR AMBAS CONSULTAS EN PARALELO
+      await Promise.all([
+        fetchConductores(params),
+        obtenerEstadisticasEstados(params), // ✅ Obtener estadísticas con los mismos filtros (excepto estado)
+      ]);
+
+      if (searchTermParam !== undefined) setSearchTerm(searchTermParam);
+    } catch (error) {
+      console.error("Error al cargar conductores:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ ACTUALIZAR EL useEffect INICIAL
+  useEffect(() => {
+    // ✅ Cargar estadísticas al inicio
+    obtenerEstadisticasEstados();
+    cargarConductores();
+  }, []);
+
+  // ✅ ACTUALIZAR ESTADÍSTICAS CUANDO CAMBIEN FILTROS (EXCEPTO ESTADO)
+  useEffect(() => {
+    // ✅ Solo actualizar estadísticas si cambian filtros que no sean estado
+    const filtrosSinEstado = {
+      search: searchTerm,
+      sede_trabajo: Array.from(filtros.sedes),
+      tipo_identificacion: Array.from(filtros.tiposIdentificacion),
+      tipo_contrato: Array.from(filtros.tiposContrato),
     };
-  }, [filtros, searchTerm]);
 
-  // ✅ AGREGA ESTE DEBUG TEMPORAL PARA VER QUÉ ESTÁ PASANDO:
+    obtenerEstadisticasEstados(filtrosSinEstado);
+  }, [
+    searchTerm,
+    filtros.sedes,
+    filtros.tiposIdentificacion,
+    filtros.tiposContrato,
+  ]);
 
+  const limpiarFiltrosDrawer = () => {
+    const filtrosVacios = {
+      sedes: new Set<string>(),
+      tiposIdentificacion: new Set<string>(),
+      tiposContrato: new Set<string>(),
+      estados: new Set<string>(),
+    };
+
+    setFiltrosTemporal(filtrosVacios);
+    setFiltros(filtrosVacios);
+    setSearchTerm("");
+    setIsFiltersOpen(false);
+  };
+
+  const aplicarFiltrosDrawer = () => {
+    // ✅ Aplicar filtros temporales a los filtros reales
+    setFiltros(filtrosTemporal);
+    setIsFiltersOpen(false);
+  };
+
+  // ✅ 1. CREAR ESTADO TEMPORAL PARA EL DRAWER
+  const [filtrosTemporal, setFiltrosTemporal] = useState<FilterOptions>({
+    sedes: new Set<string>(),
+    tiposIdentificacion: new Set<string>(),
+    tiposContrato: new Set<string>(),
+    estados: new Set<string>(),
+  });
+
+  // ✅ 2. MODIFICAR EL useEffect PARA EVITAR RE-RENDERS INNECESARIOS
   useEffect(() => {
-    console.log('🔍 Estados filtros cambiados:', {
-      estados: Array.from(filtros.estados),
-      tiposContrato: Array.from(filtros.tiposContrato),
-      sedes: Array.from(filtros.sedes),
-      tiposIdentificacion: Array.from(filtros.tiposIdentificacion)
+    // ✅ SOLO EJECUTAR SI HAY FILTROS APLICADOS Y EL DRAWER ESTÁ CERRADO
+    if (
+      !isFiltersOpen &&
+      (filtros.estados.size > 0 ||
+        filtros.sedes.size > 0 ||
+        filtros.tiposContrato.size > 0 ||
+        filtros.tiposIdentificacion.size > 0 ||
+        searchTerm)
+    ) {
+      const params: BusquedaParams = {
+        page: 1,
+        sort: sortDescriptor.column,
+        order: sortDescriptor.direction === "ASC" ? "ASC" : "DESC",
+      };
+
+      if (searchTerm) params.search = searchTerm;
+      if (filtros.sedes.size > 0)
+        params.sede_trabajo = Array.from(filtros.sedes);
+      if (filtros.tiposIdentificacion.size > 0)
+        params.tipo_identificacion = Array.from(filtros.tiposIdentificacion);
+      if (filtros.tiposContrato.size > 0)
+        params.tipo_contrato = Array.from(filtros.tiposContrato);
+      if (filtros.estados.size > 0) params.estado = Array.from(filtros.estados);
+
+      setLoading(true);
+      fetchConductores(params).finally(() => setLoading(false));
+    }
+  }, [filtros, searchTerm, sortDescriptor, isFiltersOpen]);
+
+  // ✅ 3. FUNCIÓN PARA ABRIR EL DRAWER Y SINCRONIZAR FILTROS TEMPORALES
+  const abrirDrawerFiltros = () => {
+    // ✅ Copiar filtros actuales a temporales
+    setFiltrosTemporal({
+      sedes: new Set(filtros.sedes),
+      tiposIdentificacion: new Set(filtros.tiposIdentificacion),
+      tiposContrato: new Set(filtros.tiposContrato),
+      estados: new Set(filtros.estados),
     });
-  }, [filtros]);
-
-  // ✅ TAMBIÉN AGREGA ESTE EFECTO PARA DEBUGGEAR:
-
-  useEffect(() => {
-    console.log('🎯 Conductores data changed:', {
-      count: conductoresState.data.length,
-      currentPage: conductoresState.currentPage,
-      totalPages: conductoresState.totalPages
-    });
-  }, [conductoresState]);
-
-  // ✅ COMPONENTE DE FILTROS AVANZADOS MEJORADO
-  const FiltersPanel = () => (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Filtros avanzados</h3>
-        {filtrosActivos.total > 0 && (
-          <Badge color="primary" content={filtrosActivos.total}>
-            <Filter className="w-5 h-5" />
-          </Badge>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <label className="text-sm font-medium mb-2 block">Tipo de Contrato</label>
-          <CheckboxGroup
-            color="primary"
-            size="sm"
-            value={Array.from(filtros.tiposContrato)}
-            onChange={(values) => setFiltros(prev => ({ ...prev, tiposContrato: new Set(values) }))}
-          >
-            {FILTROS_CONFIG.tiposContrato.map((tipo) => (
-              <Checkbox key={tipo.value} value={tipo.value}>
-                {tipo.label}
-              </Checkbox>
-            ))}
-          </CheckboxGroup>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium mb-2 block">Estado</label>
-          <CheckboxGroup
-            color="primary"
-            size="sm"
-            value={Array.from(filtros.estados)}
-            onChange={(values) => setFiltros(prev => ({ ...prev, estados: new Set(values) }))}
-          >
-            {FILTROS_CONFIG.estados.map((estado) => (
-              <Checkbox key={estado.value} value={estado.value}>
-                {estado.label}
-              </Checkbox>
-            ))}
-          </CheckboxGroup>
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <Button
-          className="flex-1"
-          color="primary"
-          onPress={() => handleFilter(filtros)}
-        >
-          Aplicar filtros
-        </Button>
-        <Button
-          variant="flat"
-          onPress={handleReset}
-          startContent={<BrushCleaning className="w-4 h-4" />}
-        >
-          Limpiar
-        </Button>
-      </div>
-    </div>
-  );
+    setIsFiltersOpen(true);
+  };
 
   if (!user) {
     return (
@@ -707,9 +820,9 @@ export default function GestionConductores() {
               {/* Toggle selección */}
               <Button
                 isIconOnly
+                color={isSelect ? "primary" : "default"}
                 size="sm"
                 variant="flat"
-                color={isSelect ? "primary" : "default"}
                 onPress={handleSelection}
               >
                 <SquareCheck className="w-5 h-5" />
@@ -720,18 +833,16 @@ export default function GestionConductores() {
                 isIconOnly
                 size="sm"
                 variant="flat"
-                onPress={() => setIsFiltersOpen(true)}
+                onPress={abrirDrawerFiltros} // ✅ Usar nueva función
               >
-                <Badge color="primary" content={filtrosActivos.total || ""} isInvisible={filtrosActivos.total === 0}>
-                  <SlidersHorizontal className="w-5 h-5" />
-                </Badge>
+                <SlidersHorizontal className="w-5 h-5" />
               </Button>
 
               {/* Nuevo conductor */}
               <Button
                 isIconOnly
-                size="sm"
                 color="primary"
+                size="sm"
                 onPress={abrirModalCrear}
               >
                 <PlusCircleIcon className="w-5 h-5" />
@@ -742,21 +853,21 @@ export default function GestionConductores() {
           {/* ✅ BARRA DE BÚSQUEDA MÓVIL */}
           <div className="mt-3 flex gap-2">
             <Input
+              classNames={{
+                input: "bg-white",
+                inputWrapper: "shadow-sm",
+              }}
               placeholder="Buscar conductores..."
               size="sm"
+              startContent={<SearchIcon className="w-4 h-4 text-gray-400" />}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleKeyPress}
-              startContent={<SearchIcon className="w-4 h-4 text-gray-400" />}
-              classNames={{
-                input: "bg-white",
-                inputWrapper: "shadow-sm"
-              }}
             />
             <Button
               isIconOnly
-              size="sm"
               color="primary"
+              size="sm"
               variant="flat"
               onPress={aplicarBusqueda}
             >
@@ -769,9 +880,17 @@ export default function GestionConductores() {
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
+                startContent={
+                  viewMode === "grid" ? (
+                    <Grid3X3 className="w-4 h-4" />
+                  ) : (
+                    <List className="w-4 h-4" />
+                  )
+                }
                 variant="flat"
-                startContent={viewMode === "grid" ? <Grid3X3 className="w-4 h-4" /> : <List className="w-4 h-4" />}
-                onPress={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+                onPress={() =>
+                  setViewMode(viewMode === "grid" ? "list" : "grid")
+                }
               >
                 {viewMode === "grid" ? "Cuadrícula" : "Lista"}
               </Button>
@@ -794,13 +913,16 @@ export default function GestionConductores() {
       <main className="p-4 space-y-6">
         {/* Estados de conductores */}
         <EstadosConductores
-          conductores={conductoresState.data}
-          onEstadoClick={filtrarPorEstado}
-          variant={isMobile ? "compact" : "detailed"}
-          showIcons={!isMobile}
+          // ✅ NO PASAR conductores, usar estadísticas externas
+          loading={loading}
+          selectedEstados={filtros.estados}
           showDescriptions={false}
-          selectedEstados={filtros.estados} // ✅ Esto debe ser un Set
+          showIcons={!isMobile}
+          variant={isMobile ? "compact" : "detailed"}
+          onEstadoClick={filtrarPorEstado}
           allowMultipleSelection={true}
+          // ✅ PASAR ESTADÍSTICAS EXTERNAS
+          estadisticasExternas={estadisticasEstados}
         />
         {/* Filtros activos */}
         {renderFiltrosActivos()}
@@ -814,34 +936,46 @@ export default function GestionConductores() {
             </div>
           </div>
         ) : (
-          <div className={`
-            ${viewMode === "grid"
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4"
-              : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" // ✅ GRID PARA VISTA LISTA
+          <div
+            className={`
+            ${
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4"
+                : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" // ✅ GRID PARA VISTA LISTA
             }
-          `}>
+          `}
+          >
             {conductoresState.data.length > 0 ? (
               conductoresState.data.map((conductor) => (
                 <ConductorCard
                   key={conductor.id}
                   getPresignedUrl={async (s3Key: string) => {
                     try {
-                      const response = await apiClient.get(`/api/documentos/url-firma`, {
-                        params: { key: s3Key },
-                      });
+                      const response = await apiClient.get(
+                        `/api/documentos/url-firma`,
+                        {
+                          params: { key: s3Key },
+                        },
+                      );
+
                       return response.data.url;
                     } catch (error) {
                       console.error("Error al obtener URL firmada:", error);
+
                       return null;
                     }
                   }}
                   isSelect={isSelect}
                   item={conductor}
                   selectedIds={selectedIds}
-                  viewMode={viewMode} // ✅ PASAR EL MODO DE VISTA
                   showDetails={viewMode === "list"} // ✅ MOSTRAR DETALLES EN VISTA LISTA
+                  viewMode={viewMode} // ✅ PASAR EL MODO DE VISTA
                   onPress={abrirModalDetalle}
-                  onSelect={(id) => handleSelectItem(conductoresState.data.find((c) => c.id === id)!)}
+                  onSelect={(id) =>
+                    handleSelectItem(
+                      conductoresState.data.find((c) => c.id === id)!,
+                    )
+                  }
                 />
               ))
             ) : (
@@ -854,11 +988,14 @@ export default function GestionConductores() {
                   <p className="text-gray-500 mb-4">
                     {filtrosActivos.total > 0 || filtrosActivos.hasSearch
                       ? "No se encontraron conductores con los filtros aplicados"
-                      : "Aún no tienes conductores registrados"
-                    }
+                      : "Aún no tienes conductores registrados"}
                   </p>
                   {filtrosActivos.total > 0 || filtrosActivos.hasSearch ? (
-                    <Button color="primary" variant="flat" onPress={handleReset}>
+                    <Button
+                      color="primary"
+                      variant="flat"
+                      onPress={handleReset}
+                    >
                       Limpiar filtros
                     </Button>
                   ) : (
@@ -877,10 +1014,12 @@ export default function GestionConductores() {
           <div className="flex justify-center">
             <div className="flex items-center gap-2">
               <Button
+                disabled={conductoresState.currentPage === 1}
                 size="sm"
                 variant="flat"
-                disabled={conductoresState.currentPage === 1}
-                onPress={() => cargarConductores(conductoresState.currentPage - 1)}
+                onPress={() =>
+                  cargarConductores(conductoresState.currentPage - 1)
+                }
               >
                 Anterior
               </Button>
@@ -890,10 +1029,14 @@ export default function GestionConductores() {
               </span>
 
               <Button
+                disabled={
+                  conductoresState.currentPage === conductoresState.totalPages
+                }
                 size="sm"
                 variant="flat"
-                disabled={conductoresState.currentPage === conductoresState.totalPages}
-                onPress={() => cargarConductores(conductoresState.currentPage + 1)}
+                onPress={() =>
+                  cargarConductores(conductoresState.currentPage + 1)
+                }
               >
                 Siguiente
               </Button>
@@ -905,18 +1048,99 @@ export default function GestionConductores() {
       {/* ✅ DRAWER DE FILTROS MÓVIL */}
       <Drawer
         isOpen={isFiltersOpen}
+        placement="right"
         onClose={() => setIsFiltersOpen(false)}
-        placement="bottom"
-        size="lg"
       >
-        <FiltersPanel />
+        <DrawerContent>
+          {() => (
+            <>
+              <DrawerHeader className="flex flex-col gap-1">
+                Filtros Avanzados
+              </DrawerHeader>
+              <DrawerBody>
+                <div>
+                  <label
+                    className="text-sm font-medium mb-2 block"
+                    htmlFor="tipo_contrato"
+                  >
+                    Tipo de Contrato
+                  </label>
+                  <CheckboxGroup
+                    color="primary"
+                    id="tipo_contrato"
+                    size="sm"
+                    value={Array.from(filtrosTemporal.tiposContrato)} // ✅ Usar filtros temporales
+                    onChange={(values) =>
+                      setFiltrosTemporal((prev) => ({
+                        ...prev,
+                        tiposContrato: new Set(values),
+                      }))
+                    }
+                  >
+                    {FILTROS_CONFIG.tiposContrato.map((tipo) => (
+                      <Checkbox key={tipo.value} value={tipo.value}>
+                        {tipo.label}
+                      </Checkbox>
+                    ))}
+                  </CheckboxGroup>
+                </div>
+
+                <div>
+                  <label
+                    className="text-sm font-medium mb-2 block"
+                    htmlFor="estado"
+                  >
+                    Estado
+                  </label>
+                  <CheckboxGroup
+                    color="primary"
+                    id="estado"
+                    size="sm"
+                    value={Array.from(filtrosTemporal.estados)} // ✅ Usar filtros temporales
+                    onChange={(values) =>
+                      setFiltrosTemporal((prev) => ({
+                        ...prev,
+                        estados: new Set(values),
+                      }))
+                    }
+                  >
+                    {FILTROS_CONFIG.estados.map((estado) => (
+                      <Checkbox key={estado.value} value={estado.value}>
+                        {estado.label}
+                      </Checkbox>
+                    ))}
+                  </CheckboxGroup>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1"
+                    color="primary"
+                    onPress={aplicarFiltrosDrawer} // ✅ Usar nueva función
+                  >
+                    Aplicar filtros
+                  </Button>
+                  <Button
+                    startContent={<BrushCleaning className="w-4 h-4" />}
+                    variant="flat"
+                    onPress={limpiarFiltrosDrawer} // ✅ Usar nueva función
+                  >
+                    Limpiar
+                  </Button>
+                </div>
+              </DrawerBody>
+            </>
+          )}
+        </DrawerContent>
       </Drawer>
 
       {/* ✅ MODALES (mantener originales) */}
       <ModalFormConductor
         conductorEditar={conductorParaEditar}
         isOpen={modalFormOpen}
-        titulo={conductorParaEditar ? "Editar Conductor" : "Registrar Nuevo Conductor"}
+        titulo={
+          conductorParaEditar ? "Editar Conductor" : "Registrar Nuevo Conductor"
+        }
         onClose={cerrarModalForm}
         onSave={async (conductor: Conductor) => {
           if (conductorParaEditar) {
@@ -928,13 +1152,17 @@ export default function GestionConductores() {
                 : undefined,
               documentos: Array.isArray(conductor.documentos)
                 ? Object.fromEntries(
-                  (conductor.documentos as any[]).map((doc) => [
-                    doc.categoria || doc.tipo || doc.nombre || Math.random().toString(36).substr(2, 9),
-                    doc,
-                  ]),
-                )
+                    (conductor.documentos as any[]).map((doc) => [
+                      doc.categoria ||
+                        doc.tipo ||
+                        doc.nombre ||
+                        Math.random().toString(36).substr(2, 9),
+                      doc,
+                    ]),
+                  )
                 : conductor.documentos,
             };
+
             await actualizarConductor(actualizarReq.id!, actualizarReq);
             cerrarModalForm();
             await cargarConductores(conductoresState.currentPage);
@@ -951,17 +1179,23 @@ export default function GestionConductores() {
                 : undefined,
               documentos: Array.isArray(conductor.documentos)
                 ? Object.fromEntries(
-                  (conductor.documentos as any[]).map((doc) => [
-                    doc.categoria || doc.tipo || doc.nombre || Math.random().toString(36).substr(2, 9),
-                    doc,
-                  ]),
-                )
+                    (conductor.documentos as any[]).map((doc) => [
+                      doc.categoria ||
+                        doc.tipo ||
+                        doc.nombre ||
+                        Math.random().toString(36).substr(2, 9),
+                      doc,
+                    ]),
+                  )
                 : conductor.documentos,
             };
+
             await crearConductorTradicional(crearReq);
           }
         }}
-        onSaveWithIA={conductorParaEditar ? actualizarConductorConIA : crearConductorConIA}
+        onSaveWithIA={
+          conductorParaEditar ? actualizarConductorConIA : crearConductorConIA
+        }
       />
 
       <ModalDetalleConductor

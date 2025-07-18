@@ -26,9 +26,10 @@ import {
   Eye,
   User,
   Briefcase,
-  Clipboard,
 } from "lucide-react";
 import { Image } from "@heroui/image";
+
+import RegistroModificaciones from "./registroModificaciones";
 
 import {
   Conductor,
@@ -37,7 +38,6 @@ import {
   getEstadoLabel,
 } from "@/context/ConductorContext";
 import { apiClient } from "@/config/apiClient";
-import RegistroModificaciones from "./registroModificaciones";
 
 interface ModalDetalleConductorProps {
   isOpen: boolean;
@@ -180,13 +180,13 @@ const ModalDetalleConductor: React.FC<ModalDetalleConductorProps> = ({
   ): {
     msg: string;
     color:
-    | "default"
-    | "danger"
-    | "warning"
-    | "success"
-    | "primary"
-    | "secondary"
-    | undefined;
+      | "default"
+      | "danger"
+      | "warning"
+      | "success"
+      | "primary"
+      | "secondary"
+      | undefined;
   } => {
     if (!fecha) {
       return { msg: "Sin vigencia", color: "default" };
@@ -719,7 +719,7 @@ const ModalDetalleConductor: React.FC<ModalDetalleConductorProps> = ({
 
                         {documentosAgrupadosOrdenados &&
                           Object.keys(documentosAgrupadosOrdenados).length ===
-                          0 && (
+                            0 && (
                             <div className="text-center py-12">
                               <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                                 <FileText className="h-8 w-8 text-gray-400" />

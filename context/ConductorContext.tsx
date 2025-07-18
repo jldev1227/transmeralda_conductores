@@ -94,11 +94,11 @@ export interface Conductor {
   // Control de acceso
   ultimo_acceso?: Date;
   permisos: PermisosConductor;
-  documentos?: Documento[];
+  documentos: Documento[];
 
   // Campos de auditoría
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
   creado_por_id?: string;
   [key: string]: any;
 }
@@ -128,7 +128,6 @@ export interface Documento {
   };
   createdAt: string;
   updatedAt: string;
-  modelo_id: string | null;
 }
 
 export interface CrearConductorRequest {
@@ -162,7 +161,7 @@ export interface CrearConductorRequest {
 
 // Tipos específicos para diferentes tipos de creación
 export interface crearConductorRequest
-  extends Omit<CrearConductorRequest, "documentos"> { }
+  extends Omit<CrearConductorRequest, "documentos"> {}
 
 export interface CrearConductorConDocumentosRequest
   extends CrearConductorRequest {
@@ -173,10 +172,10 @@ export interface BusquedaParams {
   page?: number;
   limit?: number;
   search?: string; // Para búsqueda general (nombre, apellido, correo, etc.)
-  estado?: EstadoConductor | EstadoConductor[];
-  sede_trabajo?: SedeTrabajo | SedeTrabajo[];
-  tipo_identificacion?: string | string[];
-  tipo_contrato?: string | string[];
+  sede_trabajo?: string | string[] | undefined; // ✅ Cambiar a string[]
+  tipo_identificacion?: string | string[] | undefined;
+  tipo_contrato?: string | string[] | undefined;
+  estado?: string | string[] | undefined; // ✅ Cambiar a string[]
   sort?: string;
   order?: "ASC" | "DESC";
 }
@@ -206,7 +205,7 @@ export interface ConductorConRelaciones extends Conductor {
   vehiculos?: any[];
   liquidaciones?: any[];
   anticipos?: any[];
-  documentos?: any[];
+  documentos: any[];
   creadoPor?: any;
 }
 
@@ -1077,7 +1076,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // ✅ VERSIÓN ALTERNATIVA MÁS EXPLÍCITA
       const handleConductorActualizado = (data: any) => {
-        console.log('Datos recibidos del conductor actualizado:', data);
+        console.log("Datos recibidos del conductor actualizado:", data);
 
         setSocketEventLogs((prev) => [
           ...prev,
@@ -1089,40 +1088,44 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         ]);
 
         if (!data || !data.conductor) {
-          console.error('Estructura de datos inválida:', data);
+          console.error("Estructura de datos inválida:", data);
           addToast({
             title: "Error",
             description: "Error en la estructura de datos recibida",
             color: "danger",
           });
+
           return;
         }
 
         const conductorActualizado = data.conductor;
         const documentosNuevos = data.documentos || [];
-        const tipoProcesamiento = data.procesamiento || 'manual';
+        const tipoProcesamiento = data.procesamiento || "manual";
 
         // ✅ PROCESO DE REEMPLAZO MÁS DETALLADO
         const documentosExistentes = conductorActualizado.documentos || [];
         const documentosFinales = [...documentosExistentes]; // Copia de documentos existentes
 
         // Para cada documento nuevo, reemplazar o agregar
-        documentosNuevos.forEach((docNuevo : Documento) => {
+        documentosNuevos.forEach((docNuevo: Documento) => {
           // Buscar índice del documento existente con la misma categoría
-          const indiceExistente = documentosFinales.findIndex(docExistente =>
-            docExistente.categoria === docNuevo.categoria
+          const indiceExistente = documentosFinales.findIndex(
+            (docExistente) => docExistente.categoria === docNuevo.categoria,
           );
 
           if (indiceExistente !== -1) {
             // ✅ REEMPLAZAR: Documento con esa categoría ya existe
             console.log(`🔄 Reemplazando documento ${docNuevo.categoria}:`, {
               documentoAnterior: documentosFinales[indiceExistente].id,
-              documentoNuevo: docNuevo.id
+              documentoNuevo: docNuevo.id,
             });
             documentosFinales[indiceExistente] = docNuevo;
           } else {
             // ✅ AGREGAR: Nueva categoría
-            console.log(`➕ Agregando nuevo documento ${docNuevo.categoria}:`, docNuevo.id);
+            console.log(
+              `➕ Agregando nuevo documento ${docNuevo.categoria}:`,
+              docNuevo.id,
+            );
             documentosFinales.push(docNuevo);
           }
         });
@@ -1130,14 +1133,16 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         // ✅ CONDUCTOR COMPLETO
         const conductorCompleto = {
           ...conductorActualizado,
-          documentos: documentosFinales
+          documentos: documentosFinales,
         };
 
         // ✅ ACTUALIZAR ESTADOS
         setConductoresState((prevState) => ({
           ...prevState,
           data: prevState.data.map((conductor) =>
-            conductor.id === conductorCompleto.id ? conductorCompleto : conductor
+            conductor.id === conductorCompleto.id
+              ? conductorCompleto
+              : conductor,
           ),
         }));
 
@@ -1148,7 +1153,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
         // ✅ NOTIFICACIONES CON INFORMACIÓN DE REEMPLAZO
         const nombreCompleto = `${conductorCompleto.nombre} ${conductorCompleto.apellido}`;
 
-        if (tipoProcesamiento === 'ministral') {
+        if (tipoProcesamiento === "ministral") {
           addToast({
             title: "✨ Actualización con IA Completada",
             description: `${nombreCompleto} ha sido actualizado automáticamente`,
@@ -1156,21 +1161,32 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           });
 
           if (documentosNuevos.length > 0) {
-            const categorias = documentosNuevos.map((doc : Documento) => doc.categoria);
-            const categoriasReemplazadas = categorias.filter((cat : string) =>
-              documentosExistentes.some((existente : Documento) => existente.categoria === cat)
+            const categorias = documentosNuevos.map(
+              (doc: Documento) => doc.categoria,
             );
-            const categoriasAgregadas = categorias.filter((cat : string) =>
-              !documentosExistentes.some((existente : Documento) => existente.categoria === cat)
+            const categoriasReemplazadas = categorias.filter((cat: string) =>
+              documentosExistentes.some(
+                (existente: Documento) => existente.categoria === cat,
+              ),
+            );
+            const categoriasAgregadas = categorias.filter(
+              (cat: string) =>
+                !documentosExistentes.some(
+                  (existente: Documento) => existente.categoria === cat,
+                ),
             );
 
-            let descripcion = '';
-            if (categoriasReemplazadas.length > 0 && categoriasAgregadas.length > 0) {
-              descripcion = `Reemplazadas: ${categoriasReemplazadas.join(', ')} | Agregadas: ${categoriasAgregadas.join(', ')}`;
+            let descripcion = "";
+
+            if (
+              categoriasReemplazadas.length > 0 &&
+              categoriasAgregadas.length > 0
+            ) {
+              descripcion = `Reemplazadas: ${categoriasReemplazadas.join(", ")} | Agregadas: ${categoriasAgregadas.join(", ")}`;
             } else if (categoriasReemplazadas.length > 0) {
-              descripcion = `Categorías reemplazadas: ${categoriasReemplazadas.join(', ')}`;
+              descripcion = `Categorías reemplazadas: ${categoriasReemplazadas.join(", ")}`;
             } else {
-              descripcion = `Categorías agregadas: ${categoriasAgregadas.join(', ')}`;
+              descripcion = `Categorías agregadas: ${categoriasAgregadas.join(", ")}`;
             }
 
             addToast({

@@ -1,39 +1,39 @@
-import React from 'react';
-import { Card, CardBody } from '@heroui/card';
-import { Clipboard, User, Calendar, UserPlus, UserCheck } from 'lucide-react';
-import { Conductor } from '@/context/ConductorContext';
+import React from "react";
+import { Card, CardBody } from "@heroui/card";
+import { Clipboard, User, UserPlus, UserCheck } from "lucide-react";
 
-const RegistroModificaciones = ({ conductor } : {
-    conductor: Conductor
-}) => {
+import { Conductor } from "@/context/ConductorContext";
+
+const RegistroModificaciones = ({ conductor }: { conductor: Conductor }) => {
   // Función para formatear fecha
-  const formatearFecha = (fecha : Date) => {
-    if (!fecha) return 'No disponible';
-    
+  const formatearFecha = (fecha: Date) => {
+    if (!fecha) return "No disponible";
+
     try {
       const fechaObj = new Date(fecha);
-      return fechaObj.toLocaleString('es-CO', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
+
+      return fechaObj.toLocaleString("es-CO", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
       });
     } catch (error) {
-      return 'Fecha inválida';
+      return "Fecha inválida";
     }
   };
 
   // Función para obtener nombre completo del usuario
-  const obtenerNombreUsuario = (usuario : {
+  const obtenerNombreUsuario = (usuario: {
     nombre?: string;
     apellido?: string;
     email?: string;
     role?: string;
   }) => {
-    if (!usuario) return 'Usuario no disponible';
-    
+    if (!usuario) return "Usuario no disponible";
+
     if (usuario.nombre && usuario.apellido) {
       return `${usuario.nombre} ${usuario.apellido}`;
     } else if (usuario.nombre) {
@@ -41,7 +41,7 @@ const RegistroModificaciones = ({ conductor } : {
     } else if (usuario.email) {
       return usuario.email;
     } else {
-      return 'Usuario desconocido';
+      return "Usuario desconocido";
     }
   };
 
@@ -65,7 +65,9 @@ const RegistroModificaciones = ({ conductor } : {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <h5 className="text-sm font-medium text-blue-900">Creado por</h5>
+                <h5 className="text-sm font-medium text-blue-900">
+                  Creado por
+                </h5>
                 <span className="text-xs text-blue-600">
                   {formatearFecha(conductor.createdAt)}
                 </span>
@@ -86,7 +88,9 @@ const RegistroModificaciones = ({ conductor } : {
                   </>
                 ) : (
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">Usuario no disponible</span>
+                    <span className="text-sm text-gray-500">
+                      Usuario no disponible
+                    </span>
                   </div>
                 )}
               </div>
@@ -102,7 +106,9 @@ const RegistroModificaciones = ({ conductor } : {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <h5 className="text-sm font-medium text-green-900">Última actualización</h5>
+                <h5 className="text-sm font-medium text-green-900">
+                  Última actualización
+                </h5>
                 <span className="text-xs text-green-600">
                   {formatearFecha(conductor.updatedAt)}
                 </span>
@@ -123,21 +129,24 @@ const RegistroModificaciones = ({ conductor } : {
                   </>
                 ) : (
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">Usuario no disponible</span>
+                    <span className="text-sm text-gray-500">
+                      Usuario no disponible
+                    </span>
                   </div>
                 )}
               </div>
-              
+
               {/* Mostrar si es el mismo usuario */}
-              {conductor.creadoPor && conductor.actualizadoPor && 
-               conductor.creadoPor.id === conductor.actualizadoPor.id && (
-                <div className="mt-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                    <User className="h-3 w-3 mr-1" />
-                    Mismo usuario creador
-                  </span>
-                </div>
-              )}
+              {conductor.creadoPor &&
+                conductor.actualizadoPor &&
+                conductor.creadoPor.id === conductor.actualizadoPor.id && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <User className="h-3 w-3 mr-1" />
+                      Mismo usuario creador
+                    </span>
+                  </div>
+                )}
             </div>
           </div>
         </div>

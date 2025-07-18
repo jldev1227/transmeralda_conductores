@@ -23,10 +23,16 @@ import ReactCrop, {
 } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@heroui/modal";
+
 import { apiClient } from "@/config/apiClient";
 import { Documento } from "@/context/ConductorContext";
-import Image from "next/image";
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/modal";
 
 // Formatter para fechas en español
 const formatter = new Intl.DateTimeFormat("es-ES", {
@@ -490,17 +496,19 @@ const SimpleDocumentUploader = ({
   if (showCrop && imgSrc) {
     return (
       <Modal
-        isOpen={showCrop}
-        backdrop="blur"
-        size="sm"
-        placement="center"
         hideCloseButton
+        backdrop="blur"
+        isOpen={showCrop}
+        placement="center"
+        size="sm"
       >
         <ModalContent>
           {() => (
             <>
               <ModalHeader className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Recortar imagen de perfil</h3>
+                <h3 className="text-lg font-semibold">
+                  Recortar imagen de perfil
+                </h3>
                 <Button
                   isIconOnly
                   color="danger"
@@ -514,22 +522,22 @@ const SimpleDocumentUploader = ({
               <ModalBody className="space-y-4">
                 <div className="flex justify-center">
                   <ReactCrop
+                    aspect={1} // Aspecto cuadrado para fotos de perfil
+                    className="max-w-full"
                     crop={crop}
+                    minHeight={100}
+                    minWidth={100}
                     onChange={(pixelCrop, percentCrop) => setCrop(percentCrop)}
                     onComplete={(c) => setCompletedCrop(c)}
-                    aspect={1} // Aspecto cuadrado para fotos de perfil
-                    minWidth={100}
-                    minHeight={100}
-                    className="max-w-full"
                   >
                     <img
                       ref={imgRef}
                       alt="Imagen a recortar"
                       src={imgSrc}
                       style={{
-                        maxHeight: '400px',
-                        maxWidth: '100%',
-                        display: 'block'
+                        maxHeight: "400px",
+                        maxWidth: "100%",
+                        display: "block",
                       }}
                       onLoad={onImageLoad}
                     />
@@ -548,8 +556,8 @@ const SimpleDocumentUploader = ({
                 <Button
                   color="primary"
                   isDisabled={!completedCrop}
-                  onPress={handleCropConfirm}
                   startContent={<Check className="h-4 w-4" />}
+                  onPress={handleCropConfirm}
                 >
                   Confirmar recorte
                 </Button>
@@ -612,9 +620,10 @@ const SimpleDocumentUploader = ({
         <div
           className={`
             border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all
-            ${isDragging
-              ? "border-blue-400 bg-blue-50"
-              : "border-gray-300 hover:border-gray-400"
+            ${
+              isDragging
+                ? "border-blue-400 bg-blue-50"
+                : "border-gray-300 hover:border-gray-400"
             }
             ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}
             ${fileError ? "border-red-300 bg-red-50" : ""}
