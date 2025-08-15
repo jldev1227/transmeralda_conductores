@@ -156,6 +156,7 @@ const SimpleDocumentUploader = ({
   // ✅ Función para validar el tamaño del archivo (10MB máximo)
   const validateFileSize = (file: File): boolean => {
     const maxSizeInBytes = 10 * 1024 * 1024; // 10MB
+
     return file.size <= maxSizeInBytes;
   };
 
@@ -170,6 +171,7 @@ const SimpleDocumentUploader = ({
 
     if (!validateFileExtension(file, type)) {
       const allowedExtensions = getAcceptedTypes(type).split(",").join(", ");
+
       return `Tipo de archivo no permitido. Extensiones permitidas: ${allowedExtensions}`;
     }
 
@@ -192,18 +194,18 @@ const SimpleDocumentUploader = ({
     // ✅ CONFIGURACIÓN PARA MÁXIMA CALIDAD
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
-    
+
     // ✅ Usar dimensiones naturales para máxima resolución
     const pixelRatio = window.devicePixelRatio || 1;
-    
+
     // ✅ Canvas con alta resolución
     canvas.width = Math.floor(pixelCrop.width * scaleX * pixelRatio);
     canvas.height = Math.floor(pixelCrop.height * scaleY * pixelRatio);
-    
+
     // ✅ Escalar el contexto para alta DPI
     ctx.scale(pixelRatio, pixelRatio);
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high'; // ✅ Máxima calidad de suavizado
+    ctx.imageSmoothingQuality = "high"; // ✅ Máxima calidad de suavizado
 
     // ✅ Dibujar la imagen con máxima calidad usando dimensiones naturales
     ctx.drawImage(
@@ -223,13 +225,15 @@ const SimpleDocumentUploader = ({
         (blob) => {
           if (!blob) {
             reject(new Error("Error al crear el blob de la imagen"));
+
             return;
           }
-          
+
           // ✅ Crear archivo con nombre apropiado manteniendo extensión JPEG para compatibilidad
-          const file = new File([blob], fileName.replace(/\.[^/.]+$/, ".jpg"), { 
-            type: "image/jpeg" 
+          const file = new File([blob], fileName.replace(/\.[^/.]+$/, ".jpg"), {
+            type: "image/jpeg",
           });
+
           resolve(file);
         },
         "image/jpeg",
@@ -252,6 +256,7 @@ const SimpleDocumentUploader = ({
       );
 
       const dateValue = calendarDateToDate(selectedDate);
+
       onChange?.(documentKey, croppedFile, dateValue || undefined);
 
       // Limpiar estados del crop
@@ -286,11 +291,11 @@ const SimpleDocumentUploader = ({
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     if (documentKey === "FOTO_PERFIL") {
       const { width, height } = e.currentTarget;
-      
+
       // ✅ Calcular crop inicial basado en dimensiones reales para mejor calidad
       const minDimension = Math.min(width, height);
       const cropSize = Math.max(minDimension * 0.8, 200); // ✅ Mínimo 200px para calidad
-      
+
       const crop = centerCrop(
         makeAspectCrop(
           {
@@ -314,6 +319,7 @@ const SimpleDocumentUploader = ({
   useEffect(() => {
     if (fecha_vigencia) {
       const date = new Date(fecha_vigencia);
+
       setSelectedDate(
         new CalendarDate(
           date.getFullYear(),
@@ -323,6 +329,7 @@ const SimpleDocumentUploader = ({
       );
     } else if (existingDocument?.fecha_vigencia) {
       const date = new Date(existingDocument.fecha_vigencia);
+
       setSelectedDate(
         new CalendarDate(
           date.getFullYear(),
@@ -338,6 +345,7 @@ const SimpleDocumentUploader = ({
     calendarDate: CalendarDate | null,
   ): Date | null => {
     if (!calendarDate) return null;
+
     return new Date(
       calendarDate.year,
       calendarDate.month - 1,
@@ -349,6 +357,7 @@ const SimpleDocumentUploader = ({
   useEffect(() => {
     if (file && selectedDate) {
       const dateValue = calendarDateToDate(selectedDate);
+
       onChange?.(documentKey, file, dateValue || undefined);
     }
   }, [selectedDate, file, documentKey]);
@@ -388,6 +397,7 @@ const SimpleDocumentUploader = ({
     } else {
       // Para otros tipos de archivo válidos
       const dateValue = calendarDateToDate(selectedDate);
+
       onChange?.(documentKey, selectedFile, dateValue || undefined);
     }
   };
@@ -412,6 +422,7 @@ const SimpleDocumentUploader = ({
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const newFile = e.dataTransfer.files[0];
+
       processSelectedFile(newFile);
     }
   };
@@ -422,6 +433,7 @@ const SimpleDocumentUploader = ({
 
     if (e.target.files && e.target.files.length > 0) {
       const newFile = e.target.files[0];
+
       processSelectedFile(newFile);
     }
   };
@@ -536,11 +548,11 @@ const SimpleDocumentUploader = ({
                     aspect={1} // ✅ Aspecto cuadrado para fotos de perfil
                     className="max-w-full"
                     crop={crop}
-                    minHeight={150} // ✅ Aumentado para mejor calidad mínima
-                    minWidth={150}  // ✅ Aumentado para mejor calidad mínima
-                    maxHeight={800} // ✅ Evita crops excesivamente grandes
-                    maxWidth={800}  // ✅ Evita crops excesivamente grandes
                     keepSelection={true} // ✅ Mantiene la selección visible
+                    maxHeight={800} // ✅ Evita crops excesivamente grandes
+                    maxWidth={800} // ✅ Evita crops excesivamente grandes
+                    minHeight={150} // ✅ Aumentado para mejor calidad mínima
+                    minWidth={150} // ✅ Aumentado para mejor calidad mínima
                     ruleOfThirds={true} // ✅ Guías para mejor composición
                     onChange={(pixelCrop, percentCrop) => setCrop(percentCrop)}
                     onComplete={(c) => setCompletedCrop(c)}
@@ -548,26 +560,27 @@ const SimpleDocumentUploader = ({
                     <img
                       ref={imgRef}
                       alt="Imagen a recortar"
+                      decoding="sync" // ✅ Decodificación síncrona
+                      loading="eager" // ✅ Carga inmediata para mejor UX
                       src={imgSrc}
                       style={{
                         maxHeight: "600px", // ✅ Aumentado para mejor resolución base
                         maxWidth: "100%",
                         display: "block",
-                        imageRendering: "high-quality", // ✅ Fuerza alta calidad
-                        objectFit: "contain" // ✅ Mantiene proporciones sin distorsión
+                        objectFit: "contain", // ✅ Mantiene proporciones sin distorsión
                       }}
                       onLoad={onImageLoad}
-                      loading="eager" // ✅ Carga inmediata para mejor UX
-                      decoding="sync"  // ✅ Decodificación síncrona
                     />
                   </ReactCrop>
                 </div>
-                
+
                 {/* ✅ Información sobre la calidad del crop */}
                 {completedCrop && (
                   <div className="text-center text-sm text-gray-600 bg-blue-50 p-2 rounded">
                     <p>
-                      📐 Dimensiones del recorte: {Math.round(completedCrop.width)} × {Math.round(completedCrop.height)} px
+                      📐 Dimensiones del recorte:{" "}
+                      {Math.round(completedCrop.width)} ×{" "}
+                      {Math.round(completedCrop.height)} px
                     </p>
                     <p className="text-xs mt-1">
                       💡 Se mantendrá la máxima calidad posible
@@ -701,7 +714,7 @@ const SimpleDocumentUploader = ({
               <div className="flex-1 min-w-0">
                 <p
                   className={`
-                      font-medium text-gray-900 text-sm max-w-full truncate
+                      font-medium text-gray-900 text-sm w-full truncate
                       max-w-[100px]
                       sm:max-w-[180px]
                       md:max-w-[260px]
