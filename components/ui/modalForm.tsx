@@ -61,7 +61,7 @@ const documentTypesIA = [
   {
     key: "CONTRATO",
     label: "Contrato Laboral",
-    required: true,
+    required: false,
     description:
       "Se extraerá: fecha ingreso, salario, sede, términos contractuales",
   },
@@ -303,12 +303,13 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
   };
 
   const validateRequiredDocuments = () => {
-    // ✅ Para actualización, no todos los documentos son requeridos
-    const requiredDocs = conductorEditar
-      ? documentTypesIA.filter(
-          (doc) => doc.key === "CEDULA" || doc.key === "LICENCIA",
-        ) // Solo requerir documentos clave para actualización
-      : documentTypesIA.filter((doc) => doc.required); // Todos los requeridos para creación
+    // ✅ NUEVA LÓGICA: Si es edición (conductorEditar existe), NO requerir ningún documento
+    if (conductorEditar) {
+      return []; // Sin documentos requeridos para edición
+    }
+
+    // ✅ Para creación de nuevos conductores, mantener la lógica original
+    const requiredDocs = documentTypesIA.filter((doc) => doc.required);
 
     return requiredDocs
       .filter((doc) => {
@@ -713,8 +714,8 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
                           {documentTypesIA.map((docType) => {
                             const documento = documentos[docType.key];
                             const esRequerido = conductorEditar
-                              ? ["CEDULA", "LICENCIA"].includes(docType.key) // Solo algunos son requeridos para actualización
-                              : docType.required; // Todos los marcados como requeridos para creación
+                              ? false
+                              : docType.required;
 
                             return (
                               <div
