@@ -2,35 +2,23 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@heroui/button";
 import {
-  BrushCleaning,
-  PlusCircleIcon,
-  SearchIcon,
-  SquareCheck,
-  UserIcon,
-  SlidersHorizontal,
-  Grid3X3,
-  List,
+  PlusIcon,
+  XIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  UsersIcon,
+  LayoutGrid,
+  ListIcon,
 } from "lucide-react";
-import { useMediaQuery } from "react-responsive";
-import { CheckboxGroup, Checkbox } from "@heroui/checkbox";
 import { addToast } from "@heroui/toast";
-import { Chip } from "@heroui/chip";
-import { Card, CardBody } from "@heroui/card";
-import {
-  Drawer,
-  DrawerBody,
-  DrawerContent,
-  DrawerHeader,
-} from "@heroui/drawer";
-import { Input } from "@heroui/input";
 
 import {
   Conductor,
   useConductor,
   BusquedaParams,
   EstadoConductor,
-  ActualizarConductorRequest,
   CrearConductorRequest,
+  ActualizarConductorRequest,
 } from "@/context/ConductorContext";
 import { SortDescriptor } from "@/components/ui/customTable";
 import ModalFormConductor from "@/components/ui/modalForm";
@@ -38,28 +26,10 @@ import ModalDetalleConductor from "@/components/ui/modalDetalle";
 import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/config/apiClient";
 import ConductorCard from "@/components/ui/conductorCard";
-import { EstadosConductores } from "@/components/ui/estadosConductores";
 import { FilterOptions } from "@/types";
+import FiltersDrawer from "@/components/ui/filterDrawer";
 
-// ✅ TIPOS Y CONSTANTES MEJORADAS
-type FilterKey = "estados" | "sedes" | "tiposIdentificacion" | "tiposContrato";
 type ViewMode = "grid" | "list";
-
-const FILTROS_CONFIG = {
-  tiposContrato: [
-    { value: "fijo", label: "Término fijo" },
-    { value: "indefinido", label: "Término indefinido" },
-    { value: "prestacion", label: "Prestación de servicios" },
-  ],
-  estados: [
-    { value: EstadoConductor.servicio, label: "En servicio" },
-    { value: EstadoConductor.disponible, label: "Disponible" },
-    { value: EstadoConductor.descanso, label: "En descanso" },
-    { value: EstadoConductor.vacaciones, label: "Vacaciones" },
-    { value: EstadoConductor.incapacidad, label: "Incapacidad" },
-    { value: EstadoConductor.desvinculado, label: "Desvinculado" },
-  ],
-} as const;
 
 export default function GestionConductores() {
   const { user } = useAuth();
@@ -71,9 +41,9 @@ export default function GestionConductores() {
     actualizarConductor,
   } = useConductor();
 
-  // ✅ ESTADOS PRINCIPALES
+  // Estados principales
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [sortDescriptor] = useState<SortDescriptor>({
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "conductor",
     direction: "ASC",
   });
@@ -83,16 +53,21 @@ export default function GestionConductores() {
     tiposIdentificacion: new Set<string>(),
     tiposContrato: new Set<string>(),
     estados: new Set<string>(),
+    generos: new Set<string>(),
+    tiposSangre: new Set<string>(),
+    terminosContrato: new Set<string>(),
+    fechaIngresoDesde: "",
+    fechaIngresoHasta: "",
+    salarioMinimo: "",
+    salarioMaximo: "",
   });
   const [loading, setLoading] = useState<boolean>(false);
 
-  // ✅ ESTADOS DE UI MEJORADOS
-  const isMobile = useMediaQuery({ maxWidth: 1024 });
+  // Estados UI
   const [isSelect, setIsSelect] = useState<boolean>(false);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-  // ✅ ESTADOS DE MODALES
+  // Estados de modales
   const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
   const [selectedConductorId, setSelectedConductorId] = useState<string | null>(
     null,
@@ -101,30 +76,14 @@ export default function GestionConductores() {
   const [conductorParaEditar, setConductorParaEditar] =
     useState<Conductor | null>(null);
 
-  // ✅ FUNCIONES DE IA (mantenidas del código original)
-  const crearConductorConIA = async (
-    conductorData: Conductor,
-  ): Promise<void> => {
-    try {
-      setLoading(true);
-      await crearConductorConAI(conductorData);
-      addToast({
-        title: "Procesamiento iniciado",
-        description:
-          "El conductor está siendo procesado con IA. Recibirás notificaciones del progreso.",
-        color: "success",
-      });
-    } catch (error: any) {
-      console.error("Error al crear conductor con IA:", error);
-      addToast({
-        title: "Error al procesar con IA",
-        description:
-          error.message || "Error al iniciar el procesamiento con IA",
-        color: "danger",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
+  // Funciones de utilidad
+  const handleSearch = useCallback((termino: string) => {
+    setSearchTerm(termino);
+  }, []);
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      // La búsqueda se ejecuta automáticamente por el useEffect
     }
   };
 
@@ -152,22 +111,6 @@ export default function GestionConductores() {
           "Error al iniciar el procesamiento de actualización con IA",
         color: "danger",
       });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const crearConductorTradicional = async (
-    conductorData: CrearConductorRequest,
-  ): Promise<void> => {
-    try {
-      setLoading(true);
-      await crearConductor(conductorData);
-      cerrarModalForm();
-      await cargarConductores(conductoresState.currentPage);
-    } catch (error: any) {
-      console.error("Error al crear conductor tradicional:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -278,44 +221,8 @@ export default function GestionConductores() {
     return response.data;
   };
 
-  // 3. ✅ CORREGIR LA FUNCIÓN filtrarPorEstado PARA USAR ESTADÍSTICAS
-  const filtrarPorEstado = useCallback(
-    (estado: EstadoConductor) => {
-      // ✅ CREAR UNA NUEVA COPIA DEL SET DE ESTADOS
-      const nuevosEstados = new Set(filtros.estados);
-
-      // ✅ TOGGLE: agregar o quitar el estado
-      if (nuevosEstados.has(estado)) {
-        nuevosEstados.delete(estado);
-      } else {
-        nuevosEstados.add(estado);
-      }
-
-      // ✅ CREAR NUEVOS FILTROS
-      const nuevosFiltros = {
-        ...filtros,
-        estados: nuevosEstados,
-      };
-
-      // ✅ ACTUALIZAR ESTADO INMEDIATAMENTE
-      setFiltros(nuevosFiltros);
-    },
-    [filtros, searchTerm, sortDescriptor, setFiltros, addToast],
-  );
-
-  // 4. ✅ CORREGIR EL useEffect PARA RECARGAR CONDUCTORES
+  // Cargar datos
   useEffect(() => {
-    if (
-      filtros.estados.size === 0 &&
-      filtros.sedes.size === 0 &&
-      filtros.tiposContrato.size === 0 &&
-      filtros.tiposIdentificacion.size === 0 &&
-      !searchTerm
-    ) {
-      // ✅ NO HACER NADA SI NO HAY FILTROS (evitar carga inicial duplicada)
-      return;
-    }
-
     const params: BusquedaParams = {
       page: 1,
       sort: sortDescriptor.column,
@@ -334,109 +241,7 @@ export default function GestionConductores() {
     fetchConductores(params).finally(() => setLoading(false));
   }, [filtros, searchTerm, sortDescriptor]);
 
-  // 5. ✅ CORREGIR EL useEffect INICIAL
-  useEffect(() => {
-    // ✅ Cargar estadísticas y conductores iniciales
-    const cargarDatosIniciales = async () => {
-      setLoading(true);
-      try {
-        await Promise.all([obtenerEstadisticasEstados(), cargarConductores(1)]);
-      } catch (error) {
-        console.error("Error al cargar datos iniciales:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    cargarDatosIniciales();
-  }, []); // ✅ Solo ejecutar una vez al montar el componente
-
-  // ✅ NUEVO ESTADO PARA ESTADÍSTICAS
-  const [estadisticasEstados, setEstadisticasEstados] = useState({
-    estadisticas: [],
-    totalConductores: 0,
-    totalActivos: 0,
-    filtrosAplicados: {},
-  });
-
-  // 9. ✅ CORREGIR LA FUNCIÓN quitarFiltroEstado
-  const quitarFiltroEstado = useCallback(
-    (estado: string) => {
-      const nuevosEstados = new Set(filtros.estados);
-
-      nuevosEstados.delete(estado);
-
-      const nuevosFiltros = {
-        ...filtros,
-        estados: nuevosEstados,
-      };
-
-      setFiltros(nuevosFiltros);
-    },
-    [filtros, addToast],
-  );
-
-  // ✅ FUNCIONES DE CARGA Y FILTROS MEJORADAS
-  useEffect(() => {
-    cargarConductores();
-  }, []);
-
-  // ✅ FUNCIONES DE UI MEJORADAS
-  const handleSearch = async (termino: string) => {
-    await cargarConductores(1, termino, undefined);
-  };
-
-  const aplicarBusqueda = () => {
-    handleSearch(searchTerm);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      aplicarBusqueda();
-    }
-  };
-
-  const handleReset = async () => {
-    const filtrosVacios = {
-      sedes: new Set<string>(),
-      tiposIdentificacion: new Set<string>(),
-      tiposContrato: new Set<string>(),
-      estados: new Set<string>(),
-    };
-
-    setSearchTerm("");
-    setFiltros(filtrosVacios);
-    // ✅ NO llamar cargarConductores aquí, el useEffect se encargará
-  };
-
-  // ✅ MEMOIZACIÓN PARA OPTIMIZACIÓN
-  const filtrosActivos = useMemo(() => {
-    return {
-      total:
-        Array.from(filtros.estados).length +
-        Array.from(filtros.tiposContrato).length +
-        Array.from(filtros.sedes).length +
-        Array.from(filtros.tiposIdentificacion).length,
-      hasSearch: searchTerm.length > 0,
-    };
-  }, [filtros, searchTerm]);
-
-  // ✅ FUNCIONES DE MODAL Y SELECCIÓN (mantenidas del original)
-  const handleSelection = () => {
-    if (selectedIds) {
-      setSelectedIds([]);
-    }
-    setIsSelect(!isSelect);
-  };
-
-  const handleSelectItem = (conductor: Conductor) => {
-    if (selectedIds.includes(conductor.id)) {
-      setSelectedIds(selectedIds.filter((id) => id !== conductor.id));
-    } else {
-      setSelectedIds([...selectedIds, conductor.id]);
-    }
-  };
-
+  // Funciones de modal
   const abrirModalDetalle = (id: string) => {
     setSelectedConductorId(id);
     setModalDetalleOpen(true);
@@ -457,197 +262,20 @@ export default function GestionConductores() {
     setSelectedConductorId(null);
   };
 
-  // ✅ FUNCIÓN PARA RENDERIZAR FILTROS ACTIVOS
-  const renderFiltrosActivos = () => {
-    const grupos: Record<FilterKey, string[]> = {
-      estados: Array.from(filtros.estados),
-      tiposIdentificacion: Array.from(filtros.tiposIdentificacion),
-      tiposContrato: Array.from(filtros.tiposContrato),
-      sedes: Array.from(filtros.sedes),
-    };
-
-    const getLabel = (tipo: FilterKey, valor: string) => {
-      switch (tipo) {
-        case "estados":
-          return (
-            FILTROS_CONFIG.estados.find((e) => e.value === valor)?.label ||
-            valor
-          );
-        case "tiposContrato":
-          return (
-            FILTROS_CONFIG.tiposContrato.find((t) => t.value === valor)
-              ?.label || valor
-          );
-        default:
-          return valor;
-      }
-    };
-
-    const hayFiltros = Object.values(grupos).some((arr) => arr.length > 0);
-
-    if (!hayFiltros && !searchTerm) return null;
-
-    return (
-      <Card className="border-none shadow-sm bg-gradient-to-r from-blue-50 to-purple-50">
-        <CardBody className="p-3">
-          <div className="flex flex-wrap gap-2">
-            {searchTerm && (
-              <Chip
-                color="secondary"
-                variant="flat"
-                onClose={() => {
-                  setSearchTerm("");
-                  handleSearch("");
-                }}
-              >
-                Búsqueda: ({searchTerm})
-              </Chip>
-            )}
-
-            {/* ✅ RENDERIZAR CHIPS INDIVIDUALES PARA CADA ESTADO */}
-            {grupos.estados.map((estado) => (
-              <Chip
-                key={`estado-${estado}`}
-                color="primary"
-                variant="flat"
-                onClose={() => quitarFiltroEstado(estado)}
-              >
-                {getLabel("estados", estado)}
-              </Chip>
-            ))}
-
-            {/* ✅ RENDERIZAR CHIPS INDIVIDUALES PARA TIPOS DE CONTRATO */}
-            {grupos.tiposContrato.map((tipo) => (
-              <Chip
-                key={`contrato-${tipo}`}
-                color="primary"
-                variant="flat"
-                onClose={() => {
-                  const nuevosContratos = new Set(filtros.tiposContrato);
-
-                  nuevosContratos.delete(tipo);
-                  const nuevosFiltros = {
-                    ...filtros,
-                    tiposContrato: nuevosContratos,
-                  };
-
-                  setFiltros(nuevosFiltros);
-                  cargarConductores(1, searchTerm, nuevosFiltros);
-                }}
-              >
-                {getLabel("tiposContrato", tipo)}
-              </Chip>
-            ))}
-
-            {/* ✅ RENDERIZAR CHIPS INDIVIDUALES PARA TIPOS DE IDENTIFICACIÓN */}
-            {grupos.tiposIdentificacion.map((tipo) => (
-              <Chip
-                key={`identificacion-${tipo}`}
-                color="primary"
-                variant="flat"
-                onClose={() => {
-                  const nuevosTipos = new Set(filtros.tiposIdentificacion);
-
-                  nuevosTipos.delete(tipo);
-                  const nuevosFiltros = {
-                    ...filtros,
-                    tiposIdentificacion: nuevosTipos,
-                  };
-
-                  setFiltros(nuevosFiltros);
-                  cargarConductores(1, searchTerm, nuevosFiltros);
-                }}
-              >
-                {getLabel("tiposIdentificacion", tipo)}
-              </Chip>
-            ))}
-
-            {/* ✅ RENDERIZAR CHIPS INDIVIDUALES PARA SEDES */}
-            {grupos.sedes.map((sede) => (
-              <Chip
-                key={`sede-${sede}`}
-                color="primary"
-                variant="flat"
-                onClose={() => {
-                  const nuevasSedes = new Set(filtros.sedes);
-
-                  nuevasSedes.delete(sede);
-                  const nuevosFiltros = { ...filtros, sedes: nuevasSedes };
-
-                  setFiltros(nuevosFiltros);
-                  cargarConductores(1, searchTerm, nuevosFiltros);
-                }}
-              >
-                {sede}
-              </Chip>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
-    );
+  // Funciones de selección
+  const handleSelection = () => {
+    setSelectedIds([]);
+    setIsSelect(!isSelect);
   };
 
-  const obtenerEstadisticasEstados = async (
-    filtrosSinEstado?: Partial<BusquedaParams>,
-  ) => {
-    try {
-      const params = new URLSearchParams();
-
-      // ✅ AGREGAR FILTROS EXCEPTO ESTADO
-      if (searchTerm) params.append("search", searchTerm);
-      if (filtros.sedes.size > 0) {
-        params.append("sede_trabajo", Array.from(filtros.sedes).join(","));
-      }
-      if (filtros.tiposIdentificacion.size > 0) {
-        params.append(
-          "tipo_identificacion",
-          Array.from(filtros.tiposIdentificacion).join(","),
-        );
-      }
-      if (filtros.tiposContrato.size > 0) {
-        params.append(
-          "tipo_contrato",
-          Array.from(filtros.tiposContrato).join(","),
-        );
-      }
-
-      // ✅ SOBRESCRIBIR CON FILTROS PERSONALIZADOS SI SE PROPORCIONAN
-      if (filtrosSinEstado) {
-        Object.entries(filtrosSinEstado).forEach(([key, value]) => {
-          if (value !== undefined && key !== "estado") {
-            if (Array.isArray(value)) {
-              params.set(key, value.join(","));
-            } else {
-              params.set(key, value.toString());
-            }
-          }
-        });
-      }
-
-      // ✅ CORREGIR LA URL - AGREGAR /estadisticas AL FINAL
-      const response = await apiClient.get(
-        `/api/conductores/estadisticas/general?${params.toString()}`,
-      );
-
-      if (response.data.success) {
-        setEstadisticasEstados(response.data.data);
-      }
-
-      return response.data.data;
-    } catch (error) {
-      console.error("Error al obtener estadísticas:", error);
-
-      // ✅ FALLBACK: usar datos actuales si falla la consulta
-      return {
-        estadisticas: [],
-        totalConductores: conductoresState.count,
-        totalActivos: 0,
-        filtrosAplicados: {},
-      };
+  const handleSelectItem = (conductor: Conductor) => {
+    if (selectedIds.includes(conductor.id)) {
+      setSelectedIds(selectedIds.filter((id) => id !== conductor.id));
+    } else {
+      setSelectedIds([...selectedIds, conductor.id]);
     }
   };
 
-  // ✅ MODIFICAR LA FUNCIÓN cargarConductores PARA INCLUIR ESTADÍSTICAS
   const cargarConductores = async (
     page: number = 1,
     searchTermParam?: string,
@@ -679,10 +307,7 @@ export default function GestionConductores() {
         params.estado = Array.from(currentFiltros.estados);
 
       // ✅ EJECUTAR AMBAS CONSULTAS EN PARALELO
-      await Promise.all([
-        fetchConductores(params),
-        obtenerEstadisticasEstados(params), // ✅ Obtener estadísticas con los mismos filtros (excepto estado)
-      ]);
+      await Promise.all([fetchConductores(params)]);
 
       if (searchTermParam !== undefined) setSearchTerm(searchTermParam);
     } catch (error) {
@@ -692,455 +317,606 @@ export default function GestionConductores() {
     }
   };
 
-  // ✅ ACTUALIZAR EL useEffect INICIAL
-  useEffect(() => {
-    // ✅ Cargar estadísticas al inicio
-    obtenerEstadisticasEstados();
-    cargarConductores();
-  }, []);
+  const contarFiltrosActivos = () => {
+    return Object.values(filtros).filter((set) => set.size > 0).length;
+  };
 
-  // ✅ ACTUALIZAR ESTADÍSTICAS CUANDO CAMBIEN FILTROS (EXCEPTO ESTADO)
-  useEffect(() => {
-    // ✅ Solo actualizar estadísticas si cambian filtros que no sean estado
-    const filtrosSinEstado = {
-      search: searchTerm,
-      sede_trabajo: Array.from(filtros.sedes),
-      tipo_identificacion: Array.from(filtros.tiposIdentificacion),
-      tipo_contrato: Array.from(filtros.tiposContrato),
-    };
+  const limpiarFiltros = () => {
+    setFiltros({
+      sedes: new Set<string>(),
+      tiposIdentificacion: new Set<string>(),
+      tiposContrato: new Set<string>(),
+      estados: new Set<string>(),
+      generos: new Set<string>(),
+      tiposSangre: new Set<string>(),
+      terminosContrato: new Set<string>(),
+      fechaIngresoDesde: "",
+      fechaIngresoHasta: "",
+      salarioMinimo: "",
+      salarioMaximo: "",
+    });
+  };
 
-    obtenerEstadisticasEstados(filtrosSinEstado);
-  }, [
-    searchTerm,
-    filtros.sedes,
-    filtros.tiposIdentificacion,
-    filtros.tiposContrato,
-  ]);
-
-  const limpiarFiltrosDrawer = () => {
+  // Limpiar filtros
+  const handleReset = () => {
     const filtrosVacios = {
       sedes: new Set<string>(),
       tiposIdentificacion: new Set<string>(),
       tiposContrato: new Set<string>(),
       estados: new Set<string>(),
+      generos: new Set<string>(),
+      tiposSangre: new Set<string>(),
+      terminosContrato: new Set<string>(),
+      fechaIngresoDesde: "",
+      fechaIngresoHasta: "",
+      salarioMinimo: "",
+      salarioMaximo: "",
     };
 
-    setFiltrosTemporal(filtrosVacios);
-    setFiltros(filtrosVacios);
     setSearchTerm("");
-    setIsFiltersOpen(false);
+    setFiltros(filtrosVacios);
   };
 
-  const aplicarFiltrosDrawer = () => {
-    // ✅ Aplicar filtros temporales a los filtros reales
-    setFiltros(filtrosTemporal);
-    setIsFiltersOpen(false);
-  };
-
-  // ✅ 1. CREAR ESTADO TEMPORAL PARA EL DRAWER
-  const [filtrosTemporal, setFiltrosTemporal] = useState<FilterOptions>({
-    sedes: new Set<string>(),
-    tiposIdentificacion: new Set<string>(),
-    tiposContrato: new Set<string>(),
-    estados: new Set<string>(),
-  });
-
-  // ✅ 2. MODIFICAR EL useEffect PARA EVITAR RE-RENDERS INNECESARIOS
-  useEffect(() => {
-    // ✅ SOLO EJECUTAR SI HAY FILTROS APLICADOS Y EL DRAWER ESTÁ CERRADO
-    if (
-      !isFiltersOpen &&
-      (filtros.estados.size > 0 ||
-        filtros.sedes.size > 0 ||
-        filtros.tiposContrato.size > 0 ||
-        filtros.tiposIdentificacion.size > 0 ||
-        searchTerm)
-    ) {
-      const params: BusquedaParams = {
-        page: 1,
-        sort: sortDescriptor.column,
-        order: sortDescriptor.direction === "ASC" ? "ASC" : "DESC",
-      };
-
-      if (searchTerm) params.search = searchTerm;
-      if (filtros.sedes.size > 0)
-        params.sede_trabajo = Array.from(filtros.sedes);
-      if (filtros.tiposIdentificacion.size > 0)
-        params.tipo_identificacion = Array.from(filtros.tiposIdentificacion);
-      if (filtros.tiposContrato.size > 0)
-        params.tipo_contrato = Array.from(filtros.tiposContrato);
-      if (filtros.estados.size > 0) params.estado = Array.from(filtros.estados);
-
+  const crearConductorTradicional = async (
+    conductorData: CrearConductorRequest,
+  ): Promise<void> => {
+    try {
       setLoading(true);
-      fetchConductores(params).finally(() => setLoading(false));
+      await crearConductor(conductorData);
+      cerrarModalForm();
+      await cargarConductores(conductoresState.currentPage);
+    } catch (error: any) {
+      console.error("Error al crear conductor tradicional:", error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
-  }, [filtros, searchTerm, sortDescriptor, isFiltersOpen]);
+  };
 
-  // ✅ 3. FUNCIÓN PARA ABRIR EL DRAWER Y SINCRONIZAR FILTROS TEMPORALES
-  const abrirDrawerFiltros = () => {
-    // ✅ Copiar filtros actuales a temporales
-    setFiltrosTemporal({
-      sedes: new Set(filtros.sedes),
-      tiposIdentificacion: new Set(filtros.tiposIdentificacion),
-      tiposContrato: new Set(filtros.tiposContrato),
-      estados: new Set(filtros.estados),
+  // Filtros activos
+  const filtrosActivos = useMemo(() => {
+    return {
+      total:
+        Array.from(filtros.estados).length +
+        Array.from(filtros.tiposContrato).length +
+        Array.from(filtros.sedes).length +
+        Array.from(filtros.tiposIdentificacion).length,
+      hasSearch: searchTerm.length > 0,
+    };
+  }, [filtros, searchTerm]);
+
+  // Estadísticas completas y mejoradas
+  const estadisticas = useMemo(() => {
+    const data = conductoresState.data;
+    const total = data.length;
+
+    // Contadores por estado
+    const porEstado = {
+      servicio: data.filter((c) => c.estado === EstadoConductor.servicio)
+        .length,
+      disponible: data.filter((c) => c.estado === EstadoConductor.disponible)
+        .length,
+      descanso: data.filter((c) => c.estado === EstadoConductor.descanso)
+        .length,
+      vacaciones: data.filter((c) => c.estado === EstadoConductor.vacaciones)
+        .length,
+      incapacidad: data.filter((c) => c.estado === EstadoConductor.incapacidad)
+        .length,
+      desvinculado: data.filter(
+        (c) => c.estado === EstadoConductor.desvinculado,
+      ).length,
+    };
+
+    // Agrupaciones principales
+    const activos = porEstado.servicio + porEstado.disponible;
+    const temporalmenteFuera =
+      porEstado.descanso + porEstado.vacaciones + porEstado.incapacidad;
+    const inactivos = porEstado.desvinculado;
+
+    // Cálculos de porcentajes
+    const porcentajes = {
+      activos: total > 0 ? Math.round((activos / total) * 100) : 0,
+      temporalmenteFuera:
+        total > 0 ? Math.round((temporalmenteFuera / total) * 100) : 0,
+      inactivos: total > 0 ? Math.round((inactivos / total) * 100) : 0,
+      enServicio:
+        total > 0 ? Math.round((porEstado.servicio / total) * 100) : 0,
+      disponibles:
+        total > 0 ? Math.round((porEstado.disponible / total) * 100) : 0,
+    };
+
+    // Estadísticas adicionales
+    const estadisticasExtras = {
+      // Eficiencia operativa (conductores activamente trabajando vs total)
+      eficienciaOperativa:
+        total > 0 ? Math.round((porEstado.servicio / total) * 100) : 0,
+      // Disponibilidad inmediata
+      disponibilidadInmediata:
+        total > 0 ? Math.round((porEstado.disponible / total) * 100) : 0,
+      // Ratio de utilización (en servicio vs disponibles + en servicio)
+      ratioUtilizacion:
+        activos > 0 ? Math.round((porEstado.servicio / activos) * 100) : 0,
+    };
+
+    return {
+      total,
+      // Agrupaciones principales
+      activos,
+      temporalmenteFuera,
+      inactivos,
+      // Desglose por estado
+      porEstado,
+      // Porcentajes
+      porcentajes,
+      // Métricas operativas
+      estadisticasExtras,
+      // Estados más relevantes para mostrar
+      enServicio: porEstado.servicio,
+      disponibles: porEstado.disponible,
+    };
+  }, [conductoresState.data]);
+
+  function sortConductores(
+    conductores: Conductor[],
+    field: string,
+    direction: "asc" | "desc",
+  ): Conductor[] {
+    return [...conductores].sort((a, b) => {
+      // Función para acceder de forma segura a propiedades anidadas
+      function getProperty(obj: any, path: string): any {
+        return path.split(".").reduce((o, p) => (o ? o[p] : undefined), obj);
+      }
+
+      const valueA = getProperty(a, field);
+      const valueB = getProperty(b, field);
+
+      // Manejo de valores indefinidos
+      if (valueA === undefined && valueB === undefined) return 0;
+      if (valueA === undefined) return 1;
+      if (valueB === undefined) return -1;
+
+      // Ordenamiento por tipo
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        return direction === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      }
+
+      // Fechas
+      if (
+        valueA instanceof Date ||
+        valueB instanceof Date ||
+        (typeof valueA === "string" && /^\d{4}-\d{2}-\d{2}/.test(valueA)) ||
+        (typeof valueB === "string" && /^\d{4}-\d{2}-\d{2}/.test(valueB))
+      ) {
+        const dateA =
+          valueA instanceof Date ? valueA : new Date(valueA as string);
+        const dateB =
+          valueB instanceof Date ? valueB : new Date(valueB as string);
+
+        return direction === "asc"
+          ? dateA.getTime() - dateB.getTime()
+          : dateB.getTime() - dateA.getTime();
+      }
+
+      // Numéricos
+      const numA = Number(valueA);
+      const numB = Number(valueB);
+
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return direction === "asc" ? numA - numB : numB - numA;
+      }
+
+      // Fallback para otros tipos
+      return direction === "asc"
+        ? String(valueA).localeCompare(String(valueB))
+        : String(valueB).localeCompare(String(valueA));
     });
-    setIsFiltersOpen(true);
+  }
+
+  const sortedServices = sortConductores(
+    conductoresState.data,
+    sortDescriptor.column,
+    sortDescriptor.direction.toLowerCase() as "asc" | "desc",
+  );
+
+  // Función auxiliar para obtener color y configuración por estado
+  const getEstadoConfig = (estado: EstadoConductor) => {
+    const configs = {
+      [EstadoConductor.servicio]: {
+        color: "blue",
+        bgColor: "bg-blue-50",
+        textColor: "text-blue-700",
+        borderColor: "border-blue-200",
+        label: "En Servicio",
+        icon: "🚗",
+        priority: 1,
+      },
+      [EstadoConductor.disponible]: {
+        color: "green",
+        bgColor: "bg-green-50",
+        textColor: "text-green-700",
+        borderColor: "border-green-200",
+        label: "Disponible",
+        icon: "✅",
+        priority: 2,
+      },
+      [EstadoConductor.descanso]: {
+        color: "yellow",
+        bgColor: "bg-yellow-50",
+        textColor: "text-yellow-700",
+        borderColor: "border-yellow-200",
+        label: "En Descanso",
+        icon: "⏸️",
+        priority: 3,
+      },
+      [EstadoConductor.vacaciones]: {
+        color: "purple",
+        bgColor: "bg-purple-50",
+        textColor: "text-purple-700",
+        borderColor: "border-purple-200",
+        label: "Vacaciones",
+        icon: "🏖️",
+        priority: 4,
+      },
+      [EstadoConductor.incapacidad]: {
+        color: "orange",
+        bgColor: "bg-orange-50",
+        textColor: "text-orange-700",
+        borderColor: "border-orange-200",
+        label: "Incapacidad",
+        icon: "🏥",
+        priority: 5,
+      },
+      [EstadoConductor.desvinculado]: {
+        color: "red",
+        bgColor: "bg-red-50",
+        textColor: "text-red-700",
+        borderColor: "border-red-200",
+        label: "Desvinculado",
+        icon: "❌",
+        priority: 6,
+      },
+    };
+
+    return configs[estado];
   };
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-blue-700 font-medium">Cargando...</p>
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Cargando...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* ✅ HEADER MÓVIL MEJORADO */}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b shadow-sm">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold bg-gradient-to-r text-emerald-600 bg-clip-text">
-                Conductores
-              </h1>
-              {socketConnected ? (
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              ) : (
-                <div className="w-2 h-2 bg-red-500 rounded-full" />
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        {/* Header mejorado completo */}
+        <header className="mb-8 bg-white border border-gray-200 p-6 backdrop-blur-sm rounded-lg bg-white/95">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Título y Estado de Conexión */}
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                {/* Título y Estado de Conexión */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-5">
+                    <div className="relative">
+                      {socketConnected ? (
+                        <>
+                          <div className="w-4 h-4 bg-emerald-500 rounded-full" />
+                          <div className="absolute inset-0 w-4 h-4 bg-emerald-500 rounded-full animate-ping opacity-75" />
+                        </>
+                      ) : (
+                        <div className="w-4 h-4 bg-red-500 rounded-full relative">
+                          <div className="absolute inset-1 w-2 h-2 bg-white rounded-full" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                        Gestión de Conductores
+                      </h1>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {socketConnected ? (
+                          <span className="flex flex-col xs:flex-row items-start xs:items-center gap-2 text-sm">
+                            <span className="text-emerald-600 font-medium whitespace-nowrap">
+                              Conectado en tiempo real
+                            </span>
+                            <span className="hidden xs:block w-1 h-1 bg-gray-400 rounded-full flex-shrink-0" />
+                            <span className="text-gray-600 leading-relaxed break-words">
+                              {new Date().toLocaleDateString("es-ES", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <span className="text-red-600 font-medium">
+                              Desconectado
+                            </span>
+                            <span className="w-1 h-1 bg-gray-400 rounded-full" />
+                            <span>Reintentando conexión...</span>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Barra de Progreso de Conexión (solo cuando está desconectado) */}
+              {!socketConnected && (
+                <div className="mt-4">
+                  <div className="w-full bg-red-100 rounded-full h-1">
+                    <div
+                      className="bg-red-500 h-1 rounded-full animate-pulse"
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Toggle selección */}
-              <Button
-                isIconOnly
-                color={isSelect ? "primary" : "default"}
-                size="sm"
-                variant="flat"
-                onPress={handleSelection}
-              >
-                <SquareCheck className="w-5 h-5" />
-              </Button>
-
-              {/* Filtros */}
-              <Button
-                isIconOnly
-                size="sm"
-                variant="flat"
-                onPress={abrirDrawerFiltros} // ✅ Usar nueva función
-              >
-                <SlidersHorizontal className="w-5 h-5" />
-              </Button>
-
-              {/* Nuevo conductor */}
-              <Button
-                isIconOnly
-                color="primary"
-                size="sm"
-                onPress={abrirModalCrear}
-              >
-                <PlusCircleIcon className="w-5 h-5" />
-              </Button>
+            {/* Estadísticas Rápidas y Acciones */}
+            <div className="flex items-center gap-4">
+              {/* Contador de Servicios */}
+              <div className="hidden md:flex items-center gap-4 px-4 py-2 bg-gray-50 rounded-lg border">
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">
+                    Total
+                  </p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {conductoresState?.count}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ✅ BARRA DE BÚSQUEDA MÓVIL */}
-          <div className="mt-3 flex gap-2">
-            <Input
-              classNames={{
-                input: "bg-white",
-                inputWrapper: "shadow-sm",
-              }}
-              placeholder="Buscar conductores..."
-              size="sm"
-              startContent={<SearchIcon className="w-4 h-4 text-gray-400" />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={handleKeyPress}
-            />
-            <Button
-              isIconOnly
-              color="primary"
-              size="sm"
-              variant="flat"
-              onPress={aplicarBusqueda}
-            >
-              <SearchIcon className="w-4 h-4" />
-            </Button>
-          </div>
+          {/* Barra de Progreso de Conexión (solo cuando está desconectado) */}
+          {!socketConnected && (
+            <div className="mt-4">
+              <div className="w-full bg-red-100 rounded-full h-1">
+                <div
+                  className="bg-red-500 h-1 rounded-full animate-pulse"
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </div>
+          )}
+        </header>
 
-          {/* ✅ CONTROLES DE VISTA Y SELECCIÓN */}
-          <div className="mt-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                startContent={
-                  viewMode === "grid" ? (
-                    <Grid3X3 className="w-4 h-4" />
+        <div className="flex flex-col gap-6">
+          {/* Contenido principal */}
+          <main className="flex-1 min-w-0">
+            {/* Lista de conductores */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-gray-600">Cargando conductores...</p>
+                  </div>
+                </div>
+              ) : conductoresState.data.length > 0 ? (
+                <div className="p-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Conductores Encontrados
+                      <span className="ml-2 text-sm font-normal text-gray-500">
+                        ({sortedServices.length} resultado
+                        {sortedServices.length !== 1 ? "s" : ""})
+                      </span>
+                    </h2>
+
+                    <div className="flex gap-3">
+                      <Button
+                        color="success"
+                        variant="flat"
+                        onPress={abrirModalCrear}
+                      >
+                        <PlusIcon className="w-4 h-4" />
+                        Nuevo conductor
+                      </Button>
+                      {/* Modo de vista */}
+                      <Button
+                        isIconOnly
+                        color="primary"
+                        variant="flat"
+                        onPress={() =>
+                          setViewMode(viewMode === "grid" ? "list" : "grid")
+                        }
+                      >
+                        {viewMode === "list" ? (
+                          <LayoutGrid className="w-5 h-5" />
+                        ) : (
+                          <ListIcon className="w-5 h-5" />
+                        )}
+                      </Button>
+                      <FiltersDrawer
+                        contarFiltrosActivos={contarFiltrosActivos}
+                        filtros={filtros}
+                        handleSearch={handleSearch}
+                        limpiarFiltros={limpiarFiltros}
+                        setFiltros={setFiltros}
+                        setSortOptions={(options) =>
+                          setSortDescriptor({
+                            column: options.field,
+                            direction: options.direction.toUpperCase() as
+                              | "ASC"
+                              | "DESC",
+                          })
+                        }
+                        sortOptions={{
+                          field: sortDescriptor.column,
+                          direction: sortDescriptor.direction.toLowerCase() as
+                            | "asc"
+                            | "desc",
+                        }}
+                      />{" "}
+                    </div>
+                  </div>
+
+                  {viewMode === "grid" ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {conductoresState.data.map((conductor) => (
+                        <ConductorCard
+                          key={conductor.id}
+                          getPresignedUrl={async (s3Key: string) => {
+                            try {
+                              const response = await apiClient.get(
+                                `/api/documentos/url-firma`,
+                                {
+                                  params: { key: s3Key },
+                                },
+                              );
+
+                              return response.data.url;
+                            } catch (error) {
+                              console.error(
+                                "Error al obtener URL firmada:",
+                                error,
+                              );
+
+                              return null;
+                            }
+                          }}
+                          isSelect={isSelect}
+                          item={conductor}
+                          selectedIds={selectedIds}
+                          viewMode="grid"
+                          onPress={abrirModalDetalle}
+                          onSelect={(id) => handleSelectItem(conductor)}
+                        />
+                      ))}
+                    </div>
                   ) : (
-                    <List className="w-4 h-4" />
-                  )
-                }
-                variant="flat"
-                onPress={() =>
-                  setViewMode(viewMode === "grid" ? "list" : "grid")
-                }
-              >
-                {viewMode === "grid" ? "Cuadrícula" : "Lista"}
-              </Button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {conductoresState.data.map((conductor) => (
+                        <ConductorCard
+                          key={conductor.id}
+                          getPresignedUrl={async (s3Key: string) => {
+                            try {
+                              const response = await apiClient.get(
+                                `/api/documentos/url-firma`,
+                                {
+                                  params: { key: s3Key },
+                                },
+                              );
 
-              {isSelect && (
-                <span className="text-sm text-gray-600">
-                  {selectedIds.length} seleccionados
-                </span>
+                              return response.data.url;
+                            } catch (error) {
+                              console.error(
+                                "Error al obtener URL firmada:",
+                                error,
+                              );
+
+                              return null;
+                            }
+                          }}
+                          isSelect={isSelect}
+                          item={conductor}
+                          selectedIds={selectedIds}
+                          showDetails={true}
+                          viewMode="list"
+                          onPress={abrirModalDetalle}
+                          onSelect={(id) => handleSelectItem(conductor)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <UsersIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No hay conductores
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      {filtrosActivos.total > 0 || filtrosActivos.hasSearch
+                        ? "No se encontraron conductores con los filtros aplicados."
+                        : "Aún no tienes conductores registrados."}
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      {filtrosActivos.total > 0 || filtrosActivos.hasSearch ? (
+                        <Button
+                          startContent={<XIcon className="w-4 h-4" />}
+                          variant="flat"
+                          onPress={handleReset}
+                        >
+                          Limpiar filtros
+                        </Button>
+                      ) : null}
+                      <Button
+                        color="primary"
+                        startContent={<PlusIcon className="w-4 h-4" />}
+                        onPress={abrirModalCrear}
+                      >
+                        Registrar conductor
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Paginación */}
+              {!loading && conductoresState.totalPages > 1 && (
+                <div className="border-t border-gray-200 px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      Página {conductoresState.currentPage} de{" "}
+                      {conductoresState.totalPages}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        disabled={conductoresState.currentPage === 1}
+                        size="sm"
+                        startContent={<ChevronLeftIcon className="w-4 h-4" />}
+                        variant="flat"
+                        onPress={() =>
+                          cargarConductores(conductoresState.currentPage - 1)
+                        }
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        disabled={
+                          conductoresState.currentPage ===
+                          conductoresState.totalPages
+                        }
+                        endContent={<ChevronRightIcon className="w-4 h-4" />}
+                        size="sm"
+                        variant="flat"
+                        onPress={() =>
+                          cargarConductores(conductoresState.currentPage + 1)
+                        }
+                      >
+                        Siguiente
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
-
-            <p className="text-sm text-gray-600">
-              {conductoresState.count} conductores
-            </p>
-          </div>
+          </main>
         </div>
       </div>
 
-      {/* ✅ MAIN CONTENT */}
-      <main className="p-4 space-y-6">
-        {/* Estados de conductores */}
-        <EstadosConductores
-          // ✅ NO PASAR conductores, usar estadísticas externas
-          loading={loading}
-          selectedEstados={filtros.estados}
-          showDescriptions={false}
-          showIcons={!isMobile}
-          variant={isMobile ? "compact" : "detailed"}
-          onEstadoClick={filtrarPorEstado}
-          allowMultipleSelection={true}
-          // ✅ PASAR ESTADÍSTICAS EXTERNAS
-          estadisticasExternas={estadisticasEstados}
-        />
-        {/* Filtros activos */}
-        {renderFiltrosActivos()}
-
-        {/* Grid/Lista de conductores */}
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mx-auto" />
-              <p className="mt-4 text-blue-700">Cargando conductores...</p>
-            </div>
-          </div>
-        ) : (
-          <div
-            className={`
-            ${
-              viewMode === "grid"
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4"
-                : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" // ✅ GRID PARA VISTA LISTA
-            }
-          `}
-          >
-            {conductoresState.data.length > 0 ? (
-              conductoresState.data.map((conductor) => (
-                <ConductorCard
-                  key={conductor.id}
-                  getPresignedUrl={async (s3Key: string) => {
-                    try {
-                      const response = await apiClient.get(
-                        `/api/documentos/url-firma`,
-                        {
-                          params: { key: s3Key },
-                        },
-                      );
-
-                      return response.data.url;
-                    } catch (error) {
-                      console.error("Error al obtener URL firmada:", error);
-
-                      return null;
-                    }
-                  }}
-                  isSelect={isSelect}
-                  item={conductor}
-                  selectedIds={selectedIds}
-                  showDetails={viewMode === "list"} // ✅ MOSTRAR DETALLES EN VISTA LISTA
-                  viewMode={viewMode} // ✅ PASAR EL MODO DE VISTA
-                  onPress={abrirModalDetalle}
-                  onSelect={(id) =>
-                    handleSelectItem(
-                      conductoresState.data.find((c) => c.id === id)!,
-                    )
-                  }
-                />
-              ))
-            ) : (
-              <Card className="col-span-full">
-                <CardBody className="text-center py-12">
-                  <UserIcon className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                  <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                    No hay conductores
-                  </h3>
-                  <p className="text-gray-500 mb-4">
-                    {filtrosActivos.total > 0 || filtrosActivos.hasSearch
-                      ? "No se encontraron conductores con los filtros aplicados"
-                      : "Aún no tienes conductores registrados"}
-                  </p>
-                  {filtrosActivos.total > 0 || filtrosActivos.hasSearch ? (
-                    <Button
-                      color="primary"
-                      variant="flat"
-                      onPress={handleReset}
-                    >
-                      Limpiar filtros
-                    </Button>
-                  ) : (
-                    <Button color="primary" onPress={abrirModalCrear}>
-                      Registrar primer conductor
-                    </Button>
-                  )}
-                </CardBody>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {/* Paginación */}
-        {!loading && conductoresState.totalPages > 1 && (
-          <div className="flex justify-center">
-            <div className="flex items-center gap-2">
-              <Button
-                disabled={conductoresState.currentPage === 1}
-                size="sm"
-                variant="flat"
-                onPress={() =>
-                  cargarConductores(conductoresState.currentPage - 1)
-                }
-              >
-                Anterior
-              </Button>
-
-              <span className="text-sm text-gray-600 px-3">
-                {conductoresState.currentPage} de {conductoresState.totalPages}
-              </span>
-
-              <Button
-                disabled={
-                  conductoresState.currentPage === conductoresState.totalPages
-                }
-                size="sm"
-                variant="flat"
-                onPress={() =>
-                  cargarConductores(conductoresState.currentPage + 1)
-                }
-              >
-                Siguiente
-              </Button>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* ✅ DRAWER DE FILTROS MÓVIL */}
-      <Drawer
-        isOpen={isFiltersOpen}
-        placement="right"
-        onClose={() => setIsFiltersOpen(false)}
-      >
-        <DrawerContent>
-          {() => (
-            <>
-              <DrawerHeader className="flex flex-col gap-1">
-                Filtros Avanzados
-              </DrawerHeader>
-              <DrawerBody>
-                <div>
-                  <label
-                    className="text-sm font-medium mb-2 block"
-                    htmlFor="tipo_contrato"
-                  >
-                    Tipo de Contrato
-                  </label>
-                  <CheckboxGroup
-                    color="primary"
-                    id="tipo_contrato"
-                    size="sm"
-                    value={Array.from(filtrosTemporal.tiposContrato)} // ✅ Usar filtros temporales
-                    onChange={(values) =>
-                      setFiltrosTemporal((prev) => ({
-                        ...prev,
-                        tiposContrato: new Set(values),
-                      }))
-                    }
-                  >
-                    {FILTROS_CONFIG.tiposContrato.map((tipo) => (
-                      <Checkbox key={tipo.value} value={tipo.value}>
-                        {tipo.label}
-                      </Checkbox>
-                    ))}
-                  </CheckboxGroup>
-                </div>
-
-                <div>
-                  <label
-                    className="text-sm font-medium mb-2 block"
-                    htmlFor="estado"
-                  >
-                    Estado
-                  </label>
-                  <CheckboxGroup
-                    color="primary"
-                    id="estado"
-                    size="sm"
-                    value={Array.from(filtrosTemporal.estados)} // ✅ Usar filtros temporales
-                    onChange={(values) =>
-                      setFiltrosTemporal((prev) => ({
-                        ...prev,
-                        estados: new Set(values),
-                      }))
-                    }
-                  >
-                    {FILTROS_CONFIG.estados.map((estado) => (
-                      <Checkbox key={estado.value} value={estado.value}>
-                        {estado.label}
-                      </Checkbox>
-                    ))}
-                  </CheckboxGroup>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1"
-                    color="primary"
-                    onPress={aplicarFiltrosDrawer} // ✅ Usar nueva función
-                  >
-                    Aplicar filtros
-                  </Button>
-                  <Button
-                    startContent={<BrushCleaning className="w-4 h-4" />}
-                    variant="flat"
-                    onPress={limpiarFiltrosDrawer} // ✅ Usar nueva función
-                  >
-                    Limpiar
-                  </Button>
-                </div>
-              </DrawerBody>
-            </>
-          )}
-        </DrawerContent>
-      </Drawer>
-
-      {/* ✅ MODALES (mantener originales) */}
+      {/* Modales */}
       <ModalFormConductor
         conductorEditar={conductorParaEditar}
         isOpen={modalFormOpen}
-        titulo={
-          conductorParaEditar ? "Editar Conductor" : "Registrar Nuevo Conductor"
-        }
+        titulo={conductorParaEditar ? "Editar Conductor" : "Nuevo Conductor"}
         onClose={cerrarModalForm}
         onSave={async (conductor: Conductor) => {
           if (conductorParaEditar) {
@@ -1194,7 +970,7 @@ export default function GestionConductores() {
           }
         }}
         onSaveWithIA={
-          conductorParaEditar ? actualizarConductorConIA : crearConductorConIA
+          conductorParaEditar ? actualizarConductorConIA : crearConductorConAI
         }
       />
 

@@ -67,8 +67,6 @@ const CustomTable: React.FC<CustomTableProps> = ({
     if (sortDescriptor?.column === column) {
       direction = sortDescriptor.direction === "ASC" ? "DESC" : "ASC";
     }
-
-    console.log(direction, column);
     onSortChange({ column, direction });
   };
 

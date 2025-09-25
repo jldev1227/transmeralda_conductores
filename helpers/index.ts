@@ -9,41 +9,40 @@
  */
 export const formatCurrency = (
   value: number | string | null | undefined,
-  options = {
+  options: {
+    currency?: string;
+    minimumFractionDigits?: number;
+    maximumFractionDigits?: number;
+    symbol?: boolean;
+  } = {
     currency: "COP",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
     symbol: true,
   },
 ): string => {
-  // Si el valor es null, undefined o una cadena vacía, devolver $0
   if (value === null || value === undefined || value === "") {
     return options.symbol ? "$0" : "0";
   }
 
-  // Convertir a número si es string
   const numericValue = typeof value === "string" ? parseFloat(value) : value;
 
-  // Si no es un número válido, devolver $0
   if (isNaN(numericValue)) {
     return options.symbol ? "$0" : "0";
   }
 
   try {
-    // Usar el API de Intl para formatear como moneda
     const formatter = new Intl.NumberFormat("es-CO", {
       style: options.symbol ? "currency" : "decimal",
-      currency: options.currency,
-      minimumFractionDigits: options.minimumFractionDigits,
-      maximumFractionDigits: options.maximumFractionDigits,
+      currency: options.currency ?? "COP",
+      minimumFractionDigits: options.minimumFractionDigits ?? 0,
+      maximumFractionDigits: options.maximumFractionDigits ?? 0,
     });
 
     return formatter.format(numericValue);
-  } catch (error) {
-    console.error("Error al formatear el valor", error);
-    // Fallback por si el navegador no soporta Intl
+  } catch {
     const formatted = numericValue
-      .toFixed(options.maximumFractionDigits)
+      .toFixed(options.maximumFractionDigits ?? 0)
       .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
     return options.symbol ? `$${formatted}` : formatted;

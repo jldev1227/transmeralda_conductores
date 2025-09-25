@@ -55,7 +55,7 @@ const RegistroModificaciones = ({ conductor }: { conductor: Conductor }) => {
           Registro de modificaciones
         </h4>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           {/* Información de creación */}
           <div className="flex items-start space-x-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex-shrink-0">
@@ -64,7 +64,7 @@ const RegistroModificaciones = ({ conductor }: { conductor: Conductor }) => {
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
+              <div>
                 <h5 className="text-sm font-medium text-blue-900">
                   Creado por
                 </h5>
@@ -105,7 +105,7 @@ const RegistroModificaciones = ({ conductor }: { conductor: Conductor }) => {
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
+              <div>
                 <h5 className="text-sm font-medium text-green-900">
                   Última actualización
                 </h5>

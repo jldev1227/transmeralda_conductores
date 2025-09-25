@@ -9,4 +9,11 @@ export interface FilterOptions {
   tiposIdentificacion: Set<string>;
   tiposContrato: Set<string>;
   estados: Set<string>;
+  generos: Set<string>;
+  tiposSangre: Set<string>;
+  terminosContrato: Set<string>;
+  fechaIngresoDesde: string;
+  fechaIngresoHasta: string;
+  salarioMinimo: string;
+  salarioMaximo: string;
 }

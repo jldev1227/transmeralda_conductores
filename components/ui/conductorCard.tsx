@@ -1,23 +1,18 @@
 import { Card, CardBody } from "@heroui/card";
-import { Chip } from "@heroui/chip";
 import {
   BanIcon,
   BedIcon,
-  CircleAlertIcon,
   CircleCheck,
   HandIcon,
   HeartPulseIcon,
-  ShieldCheckIcon,
   TreePalmIcon,
   TruckIcon,
   PhoneIcon,
-  MailIcon,
   MapPinIcon,
-  CalendarIcon,
   UserIcon,
   FileTextIcon,
 } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 
 import {
   Conductor,
@@ -35,450 +30,523 @@ type ConductorCardProps = {
   onSelect: (id: string) => void;
   selectedIds: string[];
   getPresignedUrl: (s3Key: string) => Promise<string>;
-  viewMode?: ViewMode; // ✅ NUEVA PROP PARA MODO DE VISTA
-  showDetails?: boolean; // ✅ PROP PARA MOSTRAR MÁS DETALLES EN VISTA LISTA
+  viewMode?: ViewMode;
+  showDetails?: boolean;
 };
 
-export default function ConductorCard({
-  item,
-  onPress,
-  isSelect,
-  onSelect,
-  selectedIds,
-  getPresignedUrl,
-  viewMode = "grid", // ✅ DEFAULT A CUADRÍCULA
-  showDetails = false,
-}: ConductorCardProps) {
-  const { documentosRequeridos } = useConductor();
-  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
-  const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
+// 1. ✅ COMPONENTE SEPARADO PARA LA IMAGEN - MEMO PROFUNDO
+const ConductorImage = memo(
+  ({
+    fotoUrl,
+    isLoadingPhoto,
+    nombre,
+    apellido,
+    hasFoto,
+  }: {
+    fotoUrl: string | null;
+    isLoadingPhoto: boolean;
+    nombre: string;
+    apellido: string;
+    hasFoto: boolean;
+  }) => {
+    // Memoizar las iniciales para evitar recálculos
+    const iniciales = useMemo(() => {
+      return `${nombre?.charAt(0) || ""}${apellido?.charAt(0) || ""}`;
+    }, [nombre, apellido]);
 
-  // ✅ CARGAR FOTO DE PERFIL
-  useEffect(() => {
-    const cargarFotoPerfil = async () => {
-      const fotoPerfil = item.documentos?.find(
-        (doc) => doc.categoria === "FOTO_PERFIL",
+    if (isLoadingPhoto) {
+      return (
+        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+          <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+        </div>
       );
+    }
 
-      if (fotoPerfil) {
+    if (hasFoto && fotoUrl) {
+      return (
+        <div
+          className="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+          style={{
+            backgroundImage: `url('${fotoUrl}')`,
+            // Optimizaciones de carga
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
+      );
+    }
+
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-4xl font-light text-gray-400 tracking-wider">
+          {iniciales}
+        </div>
+      </div>
+    );
+  },
+);
+
+ConductorImage.displayName = "ConductorImage";
+
+// 2. ✅ HOOK PERSONALIZADO PARA CACHE DE IMÁGENES
+const useImageCache = () => {
+  const [cache, setCache] = useState<Map<string, string>>(new Map());
+
+  const getCachedUrl = useCallback(
+    (s3Key: string, getPresignedUrl: (key: string) => Promise<string>) => {
+      // Si ya está en cache, devolver inmediatamente
+      if (cache.has(s3Key)) {
+        return Promise.resolve(cache.get(s3Key)!);
+      }
+
+      // Si no está en cache, obtener y cachear
+      return getPresignedUrl(s3Key).then((url) => {
+        setCache((prev) => new Map(prev).set(s3Key, url));
+
+        return url;
+      });
+    },
+    [cache],
+  );
+
+  const clearCache = useCallback(() => {
+    setCache(new Map());
+  }, []);
+
+  return { getCachedUrl, clearCache };
+};
+
+// 3. ✅ COMPONENTE PRINCIPAL CON OPTIMIZACIONES
+const ConductorCard = memo(
+  ({
+    item,
+    onPress,
+    isSelect,
+    onSelect,
+    selectedIds,
+    getPresignedUrl,
+    viewMode = "grid",
+    showDetails = false,
+  }: ConductorCardProps) => {
+    const { documentosRequeridos } = useConductor();
+    const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+    const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
+    const { getCachedUrl } = useImageCache();
+
+    // 4. ✅ MEMOIZAR CÁLCULOS COSTOSOS
+    const fotoPerfil = useMemo(() => {
+      return item.documentos?.find((doc) => doc.categoria === "FOTO_PERFIL");
+    }, [item.documentos]);
+
+    const isSelected = useMemo(() => {
+      return isSelect && selectedIds.includes(item.id);
+    }, [isSelect, selectedIds, item.id]);
+
+    const hasFoto = useMemo(() => {
+      return fotoUrl && fotoUrl.trim() !== "";
+    }, [fotoUrl]);
+
+    // 5. ✅ CARGAR FOTO CON CACHE Y DEBOUNCE
+    useEffect(() => {
+      let isMounted = true;
+
+      const cargarFotoPerfil = async () => {
+        if (!fotoPerfil?.s3_key) {
+          setFotoUrl(null);
+          setIsLoadingPhoto(false);
+
+          return;
+        }
+
         setIsLoadingPhoto(true);
-        try {
-          const url = await getPresignedUrl(fotoPerfil.s3_key);
 
-          setFotoUrl(url);
+        try {
+          // Usar cache para evitar requests duplicados
+          const url = await getCachedUrl(fotoPerfil.s3_key, getPresignedUrl);
+
+          if (isMounted) {
+            setFotoUrl(url);
+          }
         } catch (error) {
           console.error("Error al cargar foto de perfil:", error);
-          setFotoUrl(null);
+          if (isMounted) {
+            setFotoUrl(null);
+          }
         } finally {
-          setIsLoadingPhoto(false);
+          if (isMounted) {
+            setIsLoadingPhoto(false);
+          }
         }
-      } else {
-        setFotoUrl(null);
-        setIsLoadingPhoto(false);
-      }
-    };
-
-    cargarFotoPerfil();
-  }, [item.documentos, getPresignedUrl]);
-
-  // ✅ FUNCIÓN PARA OBTENER ESTADO DE DOCUMENTOS
-  const getDocumentStatus = () => {
-    const documentos = item.documentos || [];
-
-    if (documentos.length === 0) {
-      const faltaObligatorio = documentosRequeridos.some(
-        (req: { id: string; es_obligatorio: boolean }) => req.es_obligatorio,
-      );
-
-      return {
-        status: faltaObligatorio ? "danger" : "success",
-        icon: faltaObligatorio ? CircleAlertIcon : ShieldCheckIcon,
-        color: faltaObligatorio ? "text-red-500" : "text-green-500",
-        bgColor: faltaObligatorio ? "bg-red-100" : "bg-green-100",
-        message: faltaObligatorio
-          ? "Faltan documentos obligatorios"
-          : "Sin documentos requeridos",
       };
-    }
 
-    const documentosPresentes = documentos.map(
-      (doc: any) => doc.tipo || doc.categoria || doc.nombre || doc.key,
-    );
+      cargarFotoPerfil();
 
-    const faltaObligatorio = documentosRequeridos.some(
-      (req: { id: string; es_obligatorio: boolean }) =>
-        req.es_obligatorio && !documentosPresentes.includes(req.id),
-    );
-
-    if (faltaObligatorio) {
-      return {
-        status: "danger",
-        icon: CircleAlertIcon,
-        color: "text-red-500",
-        bgColor: "bg-red-100",
-        message: "Faltan documentos obligatorios",
+      return () => {
+        isMounted = false;
       };
-    }
+    }, [fotoPerfil?.s3_key, getCachedUrl, getPresignedUrl]);
 
-    // Verificar vigencias
-    const now = new Date();
-    let minDiff = Infinity;
-    let hasExpired = false;
+    // 6. ✅ MEMOIZAR ESTADO DE DOCUMENTOS
+    const docStatus = useMemo(() => {
+      const documentos = item.documentos || [];
 
-    documentos.forEach((doc: any) => {
-      if (doc.fecha_vigencia) {
-        const vigencia = new Date(doc.fecha_vigencia);
-        const diff = Math.ceil(
-          (vigencia.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0)) /
-            (1000 * 60 * 60 * 24),
+      if (documentos.length === 0) {
+        const faltaObligatorio = documentosRequeridos.some(
+          (req: { id: string; es_obligatorio: boolean }) => req.es_obligatorio,
         );
 
-        if (diff < 0) hasExpired = true;
-        if (diff < minDiff) minDiff = diff;
+        return {
+          status: faltaObligatorio ? "danger" : "success",
+          count: documentos.length,
+        };
       }
-    });
 
-    if (hasExpired) {
-      return {
-        status: "danger",
-        icon: CircleAlertIcon,
-        color: "text-red-500",
-        bgColor: "bg-red-100",
-        message: "Documentos vencidos",
-      };
-    }
+      const documentosPresentes = documentos.map(
+        (doc: any) => doc.tipo || doc.categoria || doc.nombre || doc.key,
+      );
 
-    if (minDiff <= 30) {
-      return {
-        status: "warning",
-        icon: CircleAlertIcon,
-        color: "text-yellow-600",
-        bgColor: "bg-yellow-100",
-        message: `Vencen en ${minDiff} días`,
-      };
-    }
+      const faltaObligatorio = documentosRequeridos.some(
+        (req: { id: string; es_obligatorio: boolean }) =>
+          req.es_obligatorio && !documentosPresentes.includes(req.id),
+      );
 
-    return {
-      status: "success",
-      icon: ShieldCheckIcon,
-      color: "text-green-500",
-      bgColor: "bg-green-100",
-      message: "Documentos al día",
-    };
-  };
+      if (faltaObligatorio) {
+        return { status: "danger", count: documentos.length };
+      }
 
-  // ✅ FUNCIÓN PARA OBTENER ÍCONO DE ESTADO
-  const getEstadoIcon = (estado: EstadoConductor) => {
-    const iconProps = {
-      size: viewMode === "list" ? 16 : 20,
-      color: getEstadoColor(estado).color,
-    };
+      // Verificar vigencias
+      const now = new Date();
+      let hasExpired = false;
+      let expiresSoon = false;
 
-    switch (estado) {
-      case EstadoConductor.servicio:
-        return <TruckIcon {...iconProps} />;
-      case EstadoConductor.vacaciones:
-        return <TreePalmIcon {...iconProps} />;
-      case EstadoConductor.incapacidad:
-        return <HeartPulseIcon {...iconProps} />;
-      case EstadoConductor.desvinculado:
-        return <BanIcon {...iconProps} />;
-      case EstadoConductor.disponible:
-        return <HandIcon {...iconProps} />;
-      case EstadoConductor.descanso:
-        return <BedIcon {...iconProps} />;
-      default:
-        return <UserIcon {...iconProps} />;
-    }
-  };
+      documentos.forEach((doc: any) => {
+        if (doc.fecha_vigencia) {
+          const vigencia = new Date(doc.fecha_vigencia);
+          const diff = Math.ceil(
+            (vigencia.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0)) /
+              (1000 * 60 * 60 * 24),
+          );
 
-  const estadoColor = getEstadoColor(item.estado);
-  const docStatus = getDocumentStatus();
-  const hasFoto = fotoUrl && fotoUrl.trim() !== "";
-  const isSelected = isSelect && selectedIds.includes(item.id);
-
-  // ✅ COMPONENTE PARA VISTA DE CUADRÍCULA (ORIGINAL MEJORADO)
-  if (viewMode === "grid") {
-    return (
-      <Card
-        isPressable
-        className={`${
-          isSelected
-            ? "border-2 border-primary-300 !bg-primary-50/20 ring-2 ring-primary-200"
-            : "border border-gray-200 hover:border-gray-300"
-        } ${
-          hasFoto ? "bg-white" : "bg-gray-50"
-        } shadow-sm hover:shadow-md transition-all duration-200 rounded-lg relative select-none overflow-hidden h-72`}
-        style={
-          hasFoto
-            ? {
-                backgroundImage: `url('${fotoUrl}')`,
-                backgroundSize: "cover",
-                backgroundPosition: "center top",
-              }
-            : {}
+          if (diff < 0) hasExpired = true;
+          if (diff <= 30 && diff > 0) expiresSoon = true;
         }
-        onPress={() => {
-          if (isSelect) {
-            onSelect(item.id);
-          } else {
-            onPress(item.id);
-          }
-        }}
-      >
-        {/* Iniciales o loading */}
-        {(!hasFoto || isLoadingPhoto) && (
-          <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center text-emerald-700 text-6xl font-bold">
-            {isLoadingPhoto ? (
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-700" />
-            ) : (
-              <div className="text-6xl font-bold mb-12">
-                {item.nombre?.charAt(0) || ""}
-                {item.apellido?.charAt(0) || ""}
-              </div>
-            )}
-          </div>
-        )}
+      });
 
-        {/* Indicador de selección */}
-        {isSelected && (
-          <div className="absolute top-2 left-2 z-20">
-            <div className="bg-primary-500 rounded-full p-1">
-              <CircleCheck className="text-white w-5 h-5" />
-            </div>
-          </div>
-        )}
+      if (hasExpired) return { status: "danger", count: documentos.length };
+      if (expiresSoon) return { status: "warning", count: documentos.length };
 
-        {/* Gradiente para mejor legibilidad del texto */}
-        {hasFoto && !isLoadingPhoto && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-        )}
+      return { status: "success", count: documentos.length };
+    }, [item.documentos, documentosRequeridos]);
 
-        {/* Badge de estado de documentos */}
-        <div
-          className={`absolute top-2 right-2 w-12 h-12 rounded-full ${docStatus.bgColor} flex items-center justify-center z-10`}
-        >
-          <docStatus.icon className={`w-6 h-6 ${docStatus.color}`} />
-        </div>
+    // 7. ✅ MEMOIZAR ICONOS DE ESTADO
+    const estadoIcon = useMemo(() => {
+      const iconProps = {
+        size: viewMode === "list" ? 14 : 16,
+        strokeWidth: 1.5,
+      };
 
-        {/* Badge de estado del conductor */}
-        <div
-          className="absolute bottom-2 left-2 z-10 rounded-full p-2 flex items-center justify-center"
-          style={{ backgroundColor: estadoColor.lightColor }}
-        >
-          {getEstadoIcon(item.estado)}
-        </div>
+      switch (item.estado) {
+        case EstadoConductor.servicio:
+          return <TruckIcon {...iconProps} />;
+        case EstadoConductor.vacaciones:
+          return <TreePalmIcon {...iconProps} />;
+        case EstadoConductor.incapacidad:
+          return <HeartPulseIcon {...iconProps} />;
+        case EstadoConductor.desvinculado:
+          return <BanIcon {...iconProps} />;
+        case EstadoConductor.disponible:
+          return <HandIcon {...iconProps} />;
+        case EstadoConductor.descanso:
+          return <BedIcon {...iconProps} />;
+        default:
+          return <UserIcon {...iconProps} />;
+      }
+    }, [item.estado, viewMode]);
 
-        {/* Información principal */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
-          <div className="space-y-1">
-            <h3
-              className={`font-semibold text-lg ${
-                hasFoto && !isLoadingPhoto ? "text-white" : "text-gray-900"
-              }`}
-            >
-              {item.nombre} {item.apellido}
-            </h3>
-            <p
-              className={`text-sm ${
-                hasFoto && !isLoadingPhoto ? "text-gray-200" : "text-gray-600"
-              }`}
-            >
-              {item.tipo_identificacion}: {item.numero_identificacion}
-            </p>
-            <Chip
-              size="sm"
-              style={{
-                backgroundColor: estadoColor.lightColor,
-                color: estadoColor.color,
-              }}
-              variant="flat"
-            >
-              {item.estado.charAt(0).toUpperCase() + item.estado.slice(1)}
-            </Chip>
-          </div>
-        </div>
-      </Card>
+    const estadoColor = useMemo(
+      () => getEstadoColor(item.estado),
+      [item.estado],
     );
-  }
 
-  // ✅ COMPONENTE PARA VISTA DE LISTA (REDISEÑADO COMPLETAMENTE)
-  return (
-    <Card
-      isPressable
-      className={`${
-        isSelected
-          ? "border-2 border-primary-400 bg-primary-50/80 shadow-lg ring-2 ring-primary-200"
-          : "border border-gray-200 hover:border-primary-300 hover:shadow-md bg-white"
-      } transition-all duration-200 w-full group relative overflow-hidden`}
-      onPress={() => {
-        if (isSelect) {
-          onSelect(item.id);
-        } else {
-          onPress(item.id);
-        }
-      }}
-    >
-      <CardBody className="p-0">
-        <div className="flex h-24">
-          {/* ✅ SECCIÓN IZQUIERDA - AVATAR Y ESTADO */}
-          <div className="flex-shrink-0 w-24 h-24 relative bg-gradient-to-br from-emerald-50 to-emerald-100">
-            {/* Avatar o foto */}
-            {hasFoto && !isLoadingPhoto ? (
-              <div
-                className="w-full h-full bg-cover bg-center"
-                style={{ backgroundImage: `url('${fotoUrl}')` }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                {isLoadingPhoto ? (
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600" />
-                ) : (
-                  <div className="text-2xl font-bold text-emerald-600">
-                    {item.nombre?.charAt(0) || ""}
-                    {item.apellido?.charAt(0) || ""}
-                  </div>
-                )}
-              </div>
+    // 8. ✅ CALLBACKS MEMOIZADOS
+    const handlePress = useCallback(() => {
+      if (isSelect) {
+        onSelect(item.id);
+      } else {
+        onPress(item.id);
+      }
+    }, [isSelect, onSelect, onPress, item.id]);
+
+    // 9. ✅ VISTA GRID OPTIMIZADA
+    if (viewMode === "grid") {
+      return (
+        <Card
+          isPressable
+          className={`
+          group relative overflow-hidden bg-white
+          border border-gray-100 hover:border-gray-200
+          transition-all duration-300 ease-out
+          hover:shadow-lg hover:shadow-gray-100/50
+          ${isSelected ? "ring-2 ring-blue-500/20 border-blue-200 bg-blue-50/30" : ""}
+          rounded-2xl h-72
+        `}
+          onPress={handlePress}
+        >
+          {/* Imagen de fondo optimizada */}
+          <div className="absolute inset-0">
+            <ConductorImage
+              apellido={item.apellido}
+              fotoUrl={fotoUrl}
+              hasFoto={!!hasFoto}
+              isLoadingPhoto={isLoadingPhoto}
+              nombre={item.nombre}
+            />
+
+            {/* Overlay sutil */}
+            {hasFoto && (
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
             )}
+          </div>
 
-            {/* Overlay con gradiente */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-
-            {/* Estado del conductor */}
-            <div
-              className="absolute bottom-1 left-1 w-6 h-6 rounded-full flex items-center justify-center border border-white/50"
-              style={{ backgroundColor: estadoColor.lightColor }}
-            >
-              {getEstadoIcon(item.estado)}
-            </div>
-
-            {/* Indicador de selección */}
+          {/* Indicadores superiores */}
+          <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
             {isSelected && (
-              <div className="absolute top-1 right-1">
-                <div className="bg-primary-500 rounded-full p-1">
-                  <CircleCheck className="text-white w-4 h-4" />
-                </div>
+              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                <CircleCheck className="w-4 h-4 text-white" strokeWidth={2} />
               </div>
             )}
-          </div>
+            {!isSelected && <div />}
 
-          {/* ✅ SECCIÓN CENTRAL - INFORMACIÓN PRINCIPAL */}
-          <div className="flex-1 p-4 min-w-0">
-            <div className="h-full flex flex-col justify-between">
-              {/* Información personal */}
-              <div className="space-y-1">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-gray-900 text-sm leading-tight truncate pr-2">
-                    {item.nombre} {item.apellido}
-                  </h3>
-                  <Chip
-                    className="ml-2 flex-shrink-0"
-                    size="sm"
-                    style={{
-                      backgroundColor: estadoColor.lightColor,
-                      color: estadoColor.color,
-                      fontSize: "10px",
-                    }}
-                    variant="flat"
-                  >
-                    {item.estado.charAt(0).toUpperCase() + item.estado.slice(1)}
-                  </Chip>
-                </div>
-
-                <p className="text-xs text-gray-600 truncate">
-                  {item.tipo_identificacion}: {item.numero_identificacion}
-                </p>
-              </div>
-
-              {/* Información de contacto */}
-              <div className="grid grid-cols-2 gap-1 text-xs text-gray-500">
-                {item.telefono && (
-                  <div className="flex items-center gap-1 truncate">
-                    <PhoneIcon className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{item.telefono}</span>
-                  </div>
-                )}
-                {item.sede_trabajo && (
-                  <div className="flex items-center gap-1 truncate">
-                    <MapPinIcon className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{item.sede_trabajo}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ✅ SECCIÓN DERECHA - DOCUMENTOS Y ACCIONES */}
-          <div className="flex-shrink-0 w-16 h-24 bg-gray-50 border-l border-gray-100 flex flex-col items-center justify-center relative">
             {/* Estado de documentos */}
-            <div
-              className={`w-8 h-8 rounded-full ${docStatus.bgColor} flex items-center justify-center mb-1`}
-            >
-              <docStatus.icon className={`w-4 h-4 ${docStatus.color}`} />
-            </div>
-
-            {/* Cantidad de documentos */}
-            <div className="text-xs text-gray-600 text-center">
-              <span className="font-medium">
-                {item.documentos?.length || 0}
+            <div className="flex items-center gap-1">
+              <div
+                className={`
+                w-2 h-2 rounded-full
+                ${
+                  docStatus.status === "success"
+                    ? "bg-green-400"
+                    : docStatus.status === "warning"
+                      ? "bg-yellow-400"
+                      : "bg-red-400"
+                }
+              `}
+              />
+              <span
+                className={`
+              text-xs font-medium px-2 py-1 rounded-full
+              ${
+                hasFoto
+                  ? "text-white/90 bg-black/20 backdrop-blur-sm"
+                  : "text-gray-700 bg-white/80 border border-gray-200"
+              }
+            `}
+              >
+                {docStatus.count}
               </span>
-              <div className="text-[10px] leading-tight">docs</div>
             </div>
-
-            {/* Indicador de hover */}
-            <div className="absolute inset-0 bg-primary-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center" />
           </div>
-        </div>
 
-        {/* ✅ FOOTER CON INFORMACIÓN ADICIONAL (EXPANDIBLE) */}
-        {showDetails && (
-          <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-2">
-            <div className="grid grid-cols-3 gap-4 text-xs">
-              {item.email && (
-                <div className="flex items-center gap-1 truncate">
-                  <MailIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                  <span className="truncate text-gray-600">{item.email}</span>
+          {/* Información principal */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <div
+                  className={`
+                  w-6 h-6 rounded-full flex items-center justify-center border
+                  ${
+                    hasFoto
+                      ? "bg-white/20 backdrop-blur-sm border-white/30"
+                      : "bg-gray-100 border-gray-200"
+                  }
+                `}
+                >
+                  <div className={hasFoto ? "text-white" : "text-gray-600"}>
+                    {estadoIcon}
+                  </div>
                 </div>
-              )}
-              {item.fecha_ingreso && (
-                <div className="flex items-center gap-1 truncate">
-                  <CalendarIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                  <span className="truncate text-gray-600">
-                    {new Date(item.fecha_ingreso).toLocaleDateString("es-ES", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "2-digit",
-                    })}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-1 truncate">
-                <FileTextIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                <span className="truncate text-gray-600">
-                  {docStatus.message}
+                <h3
+                  className={`
+                font-medium text-md leading-tight text-center
+                ${hasFoto ? "text-white" : "text-gray-900"}
+              `}
+                >
+                  {item.nombre} {item.apellido}
+                </h3>
+              </div>
+
+              <p
+                className={`
+              text-sm font-light
+              ${hasFoto ? "text-white/80" : "text-gray-600"}
+            `}
+              >
+                {item.tipo_identificacion} {item.numero_identificacion}
+              </p>
+
+              <div className="pt-1">
+                <span
+                  className={`
+                  inline-block px-3 py-1 rounded-full text-xs font-medium border
+                  ${
+                    hasFoto
+                      ? "bg-white/20 backdrop-blur-sm border-white/30 text-white"
+                      : "bg-gray-100 border-gray-200 text-gray-700"
+                  }
+                `}
+                >
+                  {item.estado.charAt(0).toUpperCase() + item.estado.slice(1)}
                 </span>
               </div>
             </div>
           </div>
-        )}
+        </Card>
+      );
+    }
 
-        {/* ✅ BARRA DE PROGRESO DE DOCUMENTOS */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
-          <div
-            className={`h-full transition-all duration-300 ${
-              docStatus.status === "success"
-                ? "bg-green-500"
-                : docStatus.status === "warning"
-                  ? "bg-yellow-500"
-                  : "bg-red-500"
-            }`}
-            style={{
-              width: `${Math.min(((item.documentos?.length || 0) / Math.max(documentosRequeridos.length, 1)) * 100, 100)}%`,
-            }}
-          />
-        </div>
-      </CardBody>
-    </Card>
-  );
-}
+    // 10. ✅ VISTA LISTA OPTIMIZADA
+    return (
+      <Card
+        isPressable
+        className={`
+        group w-full bg-white border border-gray-100
+        hover:border-gray-200 hover:shadow-md hover:shadow-gray-100/50
+        transition-all duration-200 ease-out
+        ${isSelected ? "ring-2 ring-blue-500/20 border-blue-200 bg-blue-50/30" : ""}
+        rounded-xl overflow-hidden
+      `}
+        onPress={handlePress}
+      >
+        <CardBody className="p-0">
+          <div className="flex h-20">
+            {/* Avatar optimizado */}
+            <div className="flex-shrink-0 w-20 h-20 relative bg-gray-50">
+              <ConductorImage
+                apellido={item.apellido}
+                fotoUrl={fotoUrl}
+                hasFoto={!!hasFoto}
+                isLoadingPhoto={isLoadingPhoto}
+                nombre={item.nombre}
+              />
+
+              {/* Indicador de estado */}
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+                <div
+                  className="w-3 h-3 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: estadoColor.lightColor }}
+                >
+                  {estadoIcon}
+                </div>
+              </div>
+            </div>
+
+            {/* Contenido principal */}
+            <div className="flex-1 px-4 py-3 min-w-0">
+              <div className="h-full flex flex-col justify-center space-y-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-gray-900 text-sm truncate pr-2">
+                    {item.nombre} {item.apellido}
+                  </h3>
+                  {isSelected && (
+                    <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                      <CircleCheck
+                        className="w-3 h-3 text-white"
+                        strokeWidth={2}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-xs text-gray-500 truncate">
+                  {item.tipo_identificacion}: {item.numero_identificacion}
+                </p>
+
+                <div className="flex items-center gap-3 text-xs text-gray-400">
+                  {item.telefono && (
+                    <div className="flex items-center gap-1">
+                      <PhoneIcon className="w-3 h-3" strokeWidth={1.5} />
+                      <span className="truncate max-w-24">{item.telefono}</span>
+                    </div>
+                  )}
+                  {item.sede_trabajo && (
+                    <div className="flex items-center gap-1">
+                      <MapPinIcon className="w-3 h-3" strokeWidth={1.5} />
+                      <span className="truncate max-w-20">
+                        {item.sede_trabajo}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Sección derecha - documentos */}
+            <div className="flex-shrink-0 w-16 bg-gray-50/50 flex flex-col items-center justify-center relative">
+              <div
+                className={`
+                w-8 h-8 rounded-lg flex items-center justify-center
+                ${
+                  docStatus.status === "success"
+                    ? "bg-green-100 text-green-600"
+                    : docStatus.status === "warning"
+                      ? "bg-yellow-100 text-yellow-600"
+                      : "bg-red-100 text-red-600"
+                }
+              `}
+              >
+                <FileTextIcon className="w-4 h-4" strokeWidth={1.5} />
+              </div>
+              <span className="text-xs font-medium text-gray-600 mt-1">
+                {docStatus.count}
+              </span>
+            </div>
+          </div>
+
+          {/* Footer expandible */}
+          {showDetails && (
+            <div className="border-t border-gray-100 bg-gray-50/30 px-4 py-3">
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>Estado: {item.estado}</span>
+                <span>
+                  Docs: {docStatus.count}/{documentosRequeridos.length}
+                </span>
+                {item.fecha_ingreso && (
+                  <span>
+                    Ingreso:{" "}
+                    {new Date(item.fecha_ingreso).toLocaleDateString("es-ES", {
+                      month: "short",
+                      year: "2-digit",
+                    })}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Barra de progreso sutil */}
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-100">
+            <div
+              className={`
+              h-full transition-all duration-300
+              ${
+                docStatus.status === "success"
+                  ? "bg-green-400"
+                  : docStatus.status === "warning"
+                    ? "bg-yellow-400"
+                    : "bg-red-400"
+              }
+            `}
+              style={{
+                width: `${Math.min(((item.documentos?.length || 0) / Math.max(documentosRequeridos.length, 1)) * 100, 100)}%`,
+              }}
+            />
+          </div>
+        </CardBody>
+      </Card>
+    );
+  },
+);
+
+ConductorCard.displayName = "ConductorCard";
+
+export default ConductorCard;

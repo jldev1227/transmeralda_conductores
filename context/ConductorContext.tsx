@@ -437,6 +437,8 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           "/api/documentos-conductor",
         );
 
+        console.log(response);
+
         setDocumentosRequeridos(response.data);
       } catch (error) {
         console.error("Error al obtener documentos requeridos:", error);
@@ -543,7 +545,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
       // Prepara los parámetros básicos
       const params: any = {
         page: paramsBusqueda.page || conductoresState.currentPage,
-        limit: paramsBusqueda.limit || 15,
+        limit: paramsBusqueda.limit || 6,
         sort: paramsBusqueda.sort || sortDescriptor.column,
         order: paramsBusqueda.order || sortDescriptor.direction,
       };
@@ -1076,8 +1078,6 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // ✅ VERSIÓN ALTERNATIVA MÁS EXPLÍCITA
       const handleConductorActualizado = (data: any) => {
-        console.log("Datos recibidos del conductor actualizado:", data);
-
         setSocketEventLogs((prev) => [
           ...prev,
           {
@@ -1087,7 +1087,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         ]);
 
-        if (!data || !data.conductor) {
+        if (!data) {
           console.error("Estructura de datos inválida:", data);
           addToast({
             title: "Error",
@@ -1098,7 +1098,7 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
 
-        const conductorActualizado = data.conductor;
+        const conductorActualizado = data;
         const documentosNuevos = data.documentos || [];
         const tipoProcesamiento = data.procesamiento || "manual";
 
@@ -1114,18 +1114,8 @@ export const ConductorProvider: React.FC<{ children: React.ReactNode }> = ({
           );
 
           if (indiceExistente !== -1) {
-            // ✅ REEMPLAZAR: Documento con esa categoría ya existe
-            console.log(`🔄 Reemplazando documento ${docNuevo.categoria}:`, {
-              documentoAnterior: documentosFinales[indiceExistente].id,
-              documentoNuevo: docNuevo.id,
-            });
             documentosFinales[indiceExistente] = docNuevo;
           } else {
-            // ✅ AGREGAR: Nueva categoría
-            console.log(
-              `➕ Agregando nuevo documento ${docNuevo.categoria}:`,
-              docNuevo.id,
-            );
             documentosFinales.push(docNuevo);
           }
         });
