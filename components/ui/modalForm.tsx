@@ -284,6 +284,7 @@ const ModalFormConductor: React.FC<ModalFormConductorProps> = ({
 
   useEffect(() => {
     if (conductorEditar) {
+      setDisabledTabs(["documentos-requeridos"]);
       setFormData({ ...conductorEditar });
       setFormDataCambiante({
         telefono: conductorEditar.telefono || "",
