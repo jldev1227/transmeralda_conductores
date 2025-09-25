@@ -69,9 +69,6 @@ const FiltersDrawer: React.FC<FiltersDrawerProps> = ({
   const tiposIdentificacionOptions = [
     { value: "CC", label: "Cédula de Ciudadanía" },
     { value: "CE", label: "Cédula de Extranjería" },
-    { value: "TI", label: "Tarjeta de Identidad" },
-    { value: "PA", label: "Pasaporte" },
-    { value: "NIT", label: "NIT" },
   ];
 
   const estadosOptions = [
@@ -110,7 +107,6 @@ const FiltersDrawer: React.FC<FiltersDrawerProps> = ({
   const generosOptions = [
     { value: "M", label: "Masculino" },
     { value: "F", label: "Femenino" },
-    { value: "Otro", label: "Otro" },
   ];
 
   const tiposSangreOptions = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -118,7 +114,6 @@ const FiltersDrawer: React.FC<FiltersDrawerProps> = ({
   const terminosContratoOptions = [
     "Término fijo",
     "Término indefinido",
-    "Por obra o labor",
     "Prestación de servicios",
     "Temporal",
   ];
