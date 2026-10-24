@@ -126,3 +126,60 @@
   animation: fadeInPurple 2s ease-out;
 }
 /* ... el resto de las clases de animación fade-in ... */
+
+.rastreo-gps-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rastreo-gps-marker:focus-visible {
+  outline: 2px solid #86542f;
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.rastreo-gps-marker__dot {
+  width: 19px;
+  height: 19px;
+  border: 3px solid #fffdfa;
+  border-radius: 50%;
+  background: #16865b;
+  box-shadow: 0 2px 9px rgb(41 31 22 / 35%);
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.rastreo-gps-marker__label {
+  max-width: 136px;
+  margin-top: 4px;
+  padding: 3px 7px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 80%);
+  border-radius: 7px;
+  background: #fffdfa;
+  color: #30271f;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(41 31 22 / 18%);
+}
+
+.rastreo-gps-marker:hover .rastreo-gps-marker__dot,
+.rastreo-gps-marker.is-selected .rastreo-gps-marker__dot {
+  transform: scale(1.18);
+  background: #a85f22;
+}
+
+.rastreo-gps-marker.is-stale .rastreo-gps-marker__dot {
+  background: #8b8176;
+}
+
+.rastreo-gps-marker.is-stale .rastreo-gps-marker__label {
+  color: #71675f;
+}

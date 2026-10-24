@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@heroui/button";
 import {
   PlusIcon,
@@ -9,6 +10,7 @@ import {
   UsersIcon,
   LayoutGrid,
   ListIcon,
+  MapPinned,
 } from "lucide-react";
 import { addToast } from "@heroui/toast";
 
@@ -28,6 +30,11 @@ import { apiClient } from "@/config/apiClient";
 import ConductorCard from "@/components/ui/conductorCard";
 import { FilterOptions } from "@/types";
 import FiltersDrawer from "@/components/ui/filterDrawer";
+
+const RastreoGpsMap = dynamic(
+  () => import("@/components/ui/rastreoGpsMap"),
+  { ssr: false },
+);
 
 type ViewMode = "grid" | "list";
 
@@ -66,6 +73,7 @@ export default function GestionConductores() {
   // Estados UI
   const [isSelect, setIsSelect] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [isRastreoOpen, setIsRastreoOpen] = useState(false);
 
   // Estados de modales
   const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
@@ -261,6 +269,10 @@ export default function GestionConductores() {
     setModalDetalleOpen(false);
     setSelectedConductorId(null);
   };
+
+  const cerrarRastreoGps = useCallback(() => {
+    setIsRastreoOpen(false);
+  }, []);
 
   // Funciones de selección
   const handleSelection = () => {
@@ -668,6 +680,20 @@ export default function GestionConductores() {
 
             {/* Estadísticas Rápidas y Acciones */}
             <div className="flex items-center gap-4">
+              {(user.role === "admin" ||
+                user.role === "gestor_flota" ||
+                user.permisos.admin ||
+                user.permisos.flota) && (
+                <Button
+                  color="primary"
+                  size="sm"
+                  startContent={<MapPinned className="h-4 w-4" />}
+                  variant="flat"
+                  onPress={() => setIsRastreoOpen(true)}
+                >
+                  Rastro GPS
+                </Button>
+              )}
               {/* Contador de Servicios */}
               <div className="hidden md:flex items-center gap-4 px-4 py-2 bg-gray-50 rounded-lg border">
                 <div className="text-center">
@@ -992,6 +1018,8 @@ export default function GestionConductores() {
           );
         }}
       />
+
+      {isRastreoOpen && <RastreoGpsMap onClose={cerrarRastreoGps} />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 // RootLayout.tsx (componente servidor)
 import "@/styles/globals.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { Metadata, Viewport } from "next";
 import clsx from "clsx";
 

@@ -38,6 +38,18 @@ npm install
 npm run dev
 ```
 
+## Variables de entorno para Rastro GPS
+
+La vista de rastreo de Conductores usa el estilo Mapbox Warm y consulta las posiciones desde el servidor:
+
+```env
+NEXT_PUBLIC_API_URL=https://api.transmeralda.com
+NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.****************
+WIALON_TOKEN=****************
+```
+
+`NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` es un token público de Mapbox con permiso para cargar estilos. `WIALON_TOKEN` es un secreto de servidor: no debe llevar el prefijo `NEXT_PUBLIC_`. El usuario debe tener rol de administrador o permisos de flota.
+
 ### Setup pnpm (optional)
 
 If you are using `pnpm`, you need to add the following code to your `.npmrc` file:
